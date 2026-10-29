@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#166534" />
+  <meta name="description" content="AMADEUS — Administração, Manejo e Apoio à Decisão em Empreendimentos e Unidades Rurais Sustentáveis" />
+  <title>AMADEUS — Gestão e Manejo Rural Sustentável</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="assets/logo-amadeus.png" />
+  <link rel="apple-touch-icon" href="assets/logo-amadeus.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="app-header" id="app-header"></header>
+
+  <div class="app-layout">
+    <nav class="sidebar" id="app-sidebar" aria-label="Menu Principal AMADEUS"></nav>
+    <main class="main-content" id="app-main"></main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/seed_data.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/cloud_integrations.js"></script>
+  <script src="js/views.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      window.AmadeusCore.init();
+      if (window.AmadeusCloud) {
+        window.AmadeusCloud.init();
+      }
+    });
+  </script>
+</body>
+</html>
