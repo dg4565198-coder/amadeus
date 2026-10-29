@@ -3,12 +3,13 @@
 // ============================================================================
 
 const STORAGE_KEY = 'AMADEUS_DB_V2';
-const SESSION_KEY = 'AMADEUS_SESSION_V2';
+const SESSION_KEY = 'AMADEUS_SESSION_V3';
 const DRAFT_NOTE_KEY = 'AMADEUS_NOTE_DRAFT_V2';
 
 const AmadeusCore = {
   db: null,
   currentUser: null,
+  authScreenMode: 'login', // 'login' | 'cadastro' | 'recuperar'
   activeTab: 'dashboard',
   isOnline: navigator.onLine,
   deferredInstallPrompt: null,
@@ -51,14 +52,34 @@ const AmadeusCore = {
         if (this.db.configuracoes && (!this.db.configuracoes.logoUrl || this.db.configuracoes.logoUrl === 'assets/logo-amadeus.svg')) {
           this.db.configuracoes.logoUrl = 'assets/logo-amadeus.png';
           this.db.configuracoes.subtitulo = 'Ambiente de Aprendizado e Desenvolvimento em SIPA na Bahia · IF Baiano';
-          this.saveDatabase();
+        }
+        // Migra perfis antigos 'comum' para 'colaborador' e garante campo statusAcesso
+        if (Array.isArray(this.db.usuarios)) {
+          this.db.usuarios.forEach((u) => {
+            if (u.perfil === 'comum') u.perfil = 'colaborador';
+            if (!u.statusAcesso) u.statusAcesso = u.ativo ? 'aprovado' : 'pendente';
+          });
+          if (!this.db.usuarios.some((u) => u.login === 'leitor')) {
+            this.db.usuarios.push({
+              id: 'usr-leitor-1',
+              nome: 'Visitante / Consulta Técnica',
+              login: 'leitor',
+              email: 'leitor@amadeus.rural',
+              senhaHash: 'leitor123',
+              perfil: 'leitor',
+              statusAcesso: 'aprovado',
+              cargo: 'Leitor / Consulta de Relatórios',
+              ativo: true,
+              permissoes: ['consultar', 'exportar']
+            });
+          }
         }
         // Garante que todos os 187 registros de 2025 e 2026 estejam presentes
         if (!this.db.chuvas || this.db.chuvas.length < 180) {
           const seed = window.AMADEUS_SEED.getInitialDatabase();
           this.db.chuvas = seed.chuvas;
-          this.saveDatabase();
         }
+        this.saveDatabase();
       } else {
         this.db = window.AMADEUS_SEED.getInitialDatabase();
         this.saveDatabase();
@@ -107,67 +128,202 @@ const AmadeusCore = {
   },
 
   // ==========================================================================
-  // Controle de Sessão e Permissões (Seção 8)
+  // Controle de Sessão, Solicitação de Cadastro e 3 Modos (Admin, Colaborador, Leitor)
   // ==========================================================================
   loadSession() {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        const found = this.db.usuarios.find((u) => u.id === parsed.id && u.ativo);
+        const found = this.db.usuarios.find(
+          (u) => u.id === parsed.id && u.ativo && u.statusAcesso !== 'pendente' && u.statusAcesso !== 'recusado'
+        );
         if (found) {
           this.currentUser = found;
           return;
         }
       }
     } catch (_) {}
-    // Padrão inicial: logado como Guilherme Dias Pereira para facilitar uso imediato
-    this.currentUser = this.db.usuarios[0];
-    localStorage.setItem(SESSION_KEY, JSON.stringify(this.currentUser));
+    // Sistema bloqueado até que o usuário faça login autorizado
+    this.currentUser = null;
   },
 
-  login(loginOrEmail, senha) {
+  async login(loginOrEmail, senha) {
+    // Sincroniza primeiro com o Firebase para obter aprovações ou cadastros recentes
+    if (window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled) {
+      await window.AmadeusCloud.pullFromFirebase(true);
+    }
+
     const clean = (loginOrEmail || '').trim().toLowerCase();
     const user = this.db.usuarios.find(
       (u) =>
-        u.ativo &&
-        (u.login.toLowerCase() === clean || u.email.toLowerCase() === clean) &&
-        u.senhaHash === senha
+        (u.login || '').toLowerCase() === clean ||
+        (u.email || '').toLowerCase() === clean
     );
-    if (!user) {
-      this.toast('Credenciais inválidas ou usuário inativo.', 'erro');
+
+    if (!user || user.senhaHash !== senha) {
+      this.toast('Login/E-mail ou senha incorretos.', 'erro');
       return false;
     }
+
+    if (user.statusAcesso === 'pendente') {
+      this.toast(
+        '⏳ Seu cadastro foi recebido e aguarda autorização do Administrador (Guilherme). Assim que for aprovado, seu acesso será liberado!',
+        'aviso'
+      );
+      return false;
+    }
+
+    if (user.statusAcesso === 'recusado' || !user.ativo) {
+      this.toast('🚫 Seu acesso está bloqueado ou não foi autorizado pelo Administrador.', 'erro');
+      return false;
+    }
+
     this.currentUser = user;
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    this.toast(`Bem-vindo(a), ${user.nome} (${user.perfil.toUpperCase()})!`);
+    this.toast(`Bem-vindo(a), ${user.nome} · Modo: ${this.formatRoleLabel(user.perfil)}!`);
     window.AmadeusViews.renderApp();
     return true;
   },
 
-  switchUserQuick(userId) {
-    const user = this.db.usuarios.find((u) => u.id === userId);
-    if (!user) return;
-    if (!user.ativo) {
-      this.toast('Este usuário está desativado pelo administrador.', 'erro');
+  logout() {
+    this.currentUser = null;
+    this.authScreenMode = 'login';
+    localStorage.removeItem(SESSION_KEY);
+    this.toast('Você saiu da sua conta com segurança.');
+    window.AmadeusViews.renderApp();
+  },
+
+  async solicitarCadastro(dados) {
+    if (window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled) {
+      await window.AmadeusCloud.pullFromFirebase(true);
+    }
+
+    const loginClean = (dados.login || '').trim().toLowerCase();
+    const emailClean = (dados.email || '').trim().toLowerCase();
+
+    const jaExiste = this.db.usuarios.some(
+      (u) =>
+        (u.login || '').toLowerCase() === loginClean ||
+        (u.email || '').toLowerCase() === emailClean
+    );
+    if (jaExiste) {
+      this.toast('Já existe um cadastro ou solicitação com este login ou e-mail.', 'aviso');
+      return false;
+    }
+
+    const novaSolicitacao = {
+      id: 'usr-sol-' + Date.now(),
+      nome: (dados.nome || '').trim(),
+      login: loginClean,
+      email: emailClean,
+      senhaHash: dados.senha,
+      cargo: (dados.cargo || 'Solicitante de Acesso').trim(),
+      perfil: dados.perfilSugerido || 'leitor', // O Admin decide o modo final ao aprovar
+      statusAcesso: 'pendente',
+      ativo: false,
+      dataSolicitacao: new Date().toISOString(),
+      permissoes: ['consultar', 'exportar']
+    };
+
+    this.db.usuarios.push(novaSolicitacao);
+    this.saveDatabase(`Nova solicitação de acesso: ${novaSolicitacao.nome}`);
+    this.authScreenMode = 'login';
+    this.toast(
+      '✅ Solicitação de cadastro enviada com sucesso! Aguarde o Administrador autorizar seu acesso.',
+      'sucesso'
+    );
+    window.AmadeusViews.renderApp();
+    return true;
+  },
+
+  aprovarSolicitacaoUsuario(userId, modoEscolhido) {
+    if (!this.requireAdmin('aprovar solicitações de acesso')) return;
+    const u = this.db.usuarios.find((x) => x.id === userId);
+    if (!u) return;
+    u.perfil = modoEscolhido || u.perfil || 'leitor';
+    u.statusAcesso = 'aprovado';
+    u.ativo = true;
+    u.dataAprovacao = new Date().toISOString();
+    u.aprovadoPor = this.currentUser ? this.currentUser.nome : 'Admin';
+    this.saveDatabase(`Aprovou acesso de ${u.nome} como ${u.perfil}`);
+    this.toast(`✅ Acesso de ${u.nome} autorizado no modo ${this.formatRoleLabel(u.perfil)}!`);
+    window.AmadeusViews.renderApp();
+  },
+
+  recusarOuBloquearUsuario(userId) {
+    if (!this.requireAdmin('bloquear ou recusar acesso de usuários')) return;
+    const u = this.db.usuarios.find((x) => x.id === userId);
+    if (!u) return;
+    if (u.login === 'guilherme') {
+      this.toast('Não é permitido bloquear o Administrador principal.', 'aviso');
       return;
     }
-    this.currentUser = user;
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    this.toast(`Sessão alternada para: ${user.nome} (${user.perfil === 'admin' ? 'Administrador' : 'Acesso Comum'})`);
-    if (this.activeTab === 'admin' && user.perfil !== 'admin') {
-      this.activeTab = 'dashboard';
-    }
+    u.statusAcesso = 'recusado';
+    u.ativo = false;
+    this.saveDatabase(`Bloqueou acesso de ${u.nome}`);
+    this.toast(`🚫 Acesso de ${u.nome} foi bloqueado/recusado.`);
     window.AmadeusViews.renderApp();
+  },
+
+  alterarModoUsuario(userId, novoModo) {
+    if (!this.requireAdmin('alterar o modo de acesso de um usuário')) return;
+    const u = this.db.usuarios.find((x) => x.id === userId);
+    if (!u) return;
+    u.perfil = novoModo;
+    if (u.statusAcesso === 'pendente') {
+      u.statusAcesso = 'aprovado';
+      u.ativo = true;
+    }
+    // Se o próprio usuário logado teve seu perfil atualizado
+    if (this.currentUser && this.currentUser.id === u.id) {
+      this.currentUser = u;
+      localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+    }
+    this.saveDatabase(`Alterou modo de ${u.nome} para ${novoModo}`);
+    this.toast(`Modo de ${u.nome} definido para ${this.formatRoleLabel(novoModo)}.`);
+    window.AmadeusViews.renderApp();
+  },
+
+  formatRoleLabel(perfil) {
+    if (perfil === 'admin') return '👑 Admin';
+    if (perfil === 'colaborador' || perfil === 'comum') return '🛠️ Colaborador';
+    return '👁️ Leitor';
   },
 
   isAdmin() {
     return Boolean(this.currentUser && this.currentUser.perfil === 'admin');
   },
 
+  isColaborador() {
+    return Boolean(
+      this.currentUser &&
+        (this.currentUser.perfil === 'colaborador' || this.currentUser.perfil === 'comum')
+    );
+  },
+
+  isLeitor() {
+    return Boolean(this.currentUser && this.currentUser.perfil === 'leitor');
+  },
+
+  canCreate() {
+    return this.isAdmin() || this.isColaborador();
+  },
+
+  requireCreate(acaoNome = 'cadastrar novos registros') {
+    if (!this.canCreate()) {
+      this.toast(
+        `👁️ Modo Leitor: sua conta tem permissão apenas para leitura e exportação de PDFs (sem permissão para ${acaoNome}).`,
+        'aviso'
+      );
+      return false;
+    }
+    return true;
+  },
+
   requireAdmin(acaoNome = 'executar esta operação administrativa') {
     if (!this.isAdmin()) {
-      this.toast(`Acesso negado: apenas Administradores podem ${acaoNome}.`, 'erro');
+      this.toast(`🔒 Acesso restrito: apenas Administradores podem ${acaoNome}.`, 'erro');
       return false;
     }
     return true;
@@ -181,6 +337,7 @@ const AmadeusCore = {
     }
     let adminPrincipal = this.db.usuarios.find((u) => u.login === 'guilherme') || this.db.usuarios[0];
     adminPrincipal.perfil = 'admin';
+    adminPrincipal.statusAcesso = 'aprovado';
     adminPrincipal.ativo = true;
     adminPrincipal.permissoes = ['tudo', 'exportar', 'admin', 'portal', 'backup'];
     this.currentUser = adminPrincipal;
