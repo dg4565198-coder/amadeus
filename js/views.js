@@ -1,13 +1,211 @@
 // ============================================================================
 // AMADEUS - Camada de Interface e Módulos Visuais (Views & Interações)
-// Com Edição/Exclusão Exclusiva para Admin + Integração Firebase e GitHub
+// Login Obrigatório + Aprovação pelo Admin + 3 Modos (Admin, Colaborador, Leitor)
 // ============================================================================
 
 const AmadeusViews = {
+  authGateTab: 'login', // 'login' | 'cadastro' | 'emergencia'
+
   renderApp() {
+    const core = window.AmadeusCore;
+    const headerEl = document.getElementById('app-header');
+    const sidebarEl = document.getElementById('app-sidebar');
+    const mainEl = document.getElementById('app-main');
+
+    // Bloqueio total antes do login: nada do sistema aparece sem usuário autenticado e aprovado
+    if (!core.currentUser) {
+      if (headerEl) {
+        headerEl.innerHTML = '';
+        headerEl.style.display = 'none';
+      }
+      if (sidebarEl) {
+        sidebarEl.innerHTML = '';
+        sidebarEl.style.display = 'none';
+      }
+      if (mainEl) {
+        mainEl.innerHTML = this.viewAuthGate();
+      }
+      return;
+    }
+
+    if (headerEl) headerEl.style.display = '';
+    if (sidebarEl) sidebarEl.style.display = '';
     this.renderHeader();
     this.renderSidebar();
     this.renderMainContent();
+  },
+
+  viewAuthGate() {
+    const core = window.AmadeusCore;
+    const cfg = core.db.configuracoes || {};
+    const aba = this.authGateTab || 'login';
+    const fbOn = window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled;
+
+    return `
+      <div style="min-height:88vh; display:flex; align-items:center; justify-content:center; padding:1.25rem;">
+        <div class="card" style="max-width:520px; width:100%; margin:0; padding:2rem; border-top:6px solid var(--green-700); box-shadow:0 20px 45px rgba(15,23,42,0.16);">
+          <div style="text-align:center; margin-bottom:1.4rem;">
+            <img src="${cfg.logoUrl || 'assets/logo-amadeus.png'}" alt="Logo AMADEUS" onerror="this.src='assets/logo-amadeus.png'"
+              style="width:118px; height:118px; object-fit:contain; border-radius:20px; background:#fff; padding:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); margin-bottom:0.75rem;" />
+            <h1 style="font-size:1.65rem; font-weight:900; color:var(--green-900); margin:0;">${cfg.nomeSistema || 'AMADEUS'}</h1>
+            <div style="font-size:0.86rem; font-weight:700; color:var(--green-700); margin-top:0.2rem;">
+              ${cfg.subtitulo || 'Ambiente de Aprendizado e Desenvolvimento em SIPA na Bahia'}
+            </div>
+            <div style="font-size:0.76rem; color:var(--slate-500); margin-top:0.2rem;">
+              Acesso Restrito · Identifique-se ou solicite autorização ao Administrador
+            </div>
+          </div>
+
+          <!-- Abas da Tela de Entrada -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; background:var(--slate-100); padding:0.35rem; border-radius:10px; margin-bottom:1.25rem;">
+            <button type="button" class="btn ${aba === 'login' ? 'btn-primary' : 'btn-secondary'}" style="justify-content:center;"
+              onclick="AmadeusViews.authGateTab='login'; AmadeusViews.renderApp();">
+              🔑 Entrar no Sistema
+            </button>
+            <button type="button" class="btn ${aba === 'cadastro' ? 'btn-primary' : 'btn-secondary'}" style="justify-content:center;"
+              onclick="AmadeusViews.authGateTab='cadastro'; AmadeusViews.renderApp();">
+              📝 Solicitar Acesso
+            </button>
+          </div>
+
+          ${
+            aba === 'login'
+              ? `
+            <form onsubmit="AmadeusViews.submeterLoginGate(event)">
+              <div class="form-group" style="margin-bottom:0.85rem;">
+                <label>Usuário ou E-mail *</label>
+                <input type="text" id="gate-user" class="form-control" placeholder="Digite seu login ou e-mail..." required autofocus />
+              </div>
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label>Senha *</label>
+                <input type="password" id="gate-pass" class="form-control" placeholder="Digite sua senha..." required />
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.75rem; font-size:0.95rem;">
+                🔓 Acessar o AMADEUS
+              </button>
+            </form>
+
+            <div style="margin-top:1.15rem; padding-top:1rem; border-top:1px solid var(--slate-200); font-size:0.78rem; color:var(--slate-600);">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <span>🔥 Banco em Nuvem: <strong>${fbOn ? 'Firebase Conectado' : 'Local'}</strong></span>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusCloud.pullFromFirebase(false)">
+                  🔄 Sincronizar Cadastros da Nuvem
+                </button>
+              </div>
+              <div style="margin-top:0.75rem; background:var(--slate-50); padding:0.65rem; border-radius:8px; border:1px solid var(--slate-200);">
+                <strong>Perfis de Acesso do Sistema:</strong><br/>
+                • <strong>👑 Admin:</strong> Controle total (criar, editar, excluir registros e aprovar usuários)<br/>
+                • <strong>🛠️ Colaborador:</strong> Consulta painéis, exporta PDFs e cadastra novos lançamentos<br/>
+                • <strong>👁️ Leitor:</strong> Somente leitura de dados, gráficos e exportação de relatórios
+              </div>
+              <div style="margin-top:0.6rem; text-align:center;">
+                <a href="javascript:void(0)" onclick="AmadeusViews.authGateTab='emergencia'; AmadeusViews.renderApp();" style="color:var(--green-800); font-weight:700; text-decoration:none;">
+                  🛠️ Recuperação de Administrador de Emergência
+                </a>
+              </div>
+            </div>
+          `
+              : aba === 'cadastro'
+              ? `
+            <div class="alert-banner alert-info" style="font-size:0.8rem; margin-bottom:1rem;">
+              <div>🛡️</div>
+              <div>
+                <strong>Solicitação de Cadastro mediante Autorização:</strong><br/>
+                Preencha seus dados abaixo. Seu pedido ficará <strong>Pendente</strong> até que o Administrador autorize sua entrada e defina seu modo (<em>Leitor</em>, <em>Colaborador</em> ou <em>Admin</em>).
+              </div>
+            </div>
+
+            <form onsubmit="AmadeusViews.submeterSolicitacaoCadastro(event)">
+              <div class="form-group" style="margin-bottom:0.75rem;">
+                <label>Nome Completo *</label>
+                <input type="text" id="cad-nome" class="form-control" placeholder="Ex.: Maria Silva" required />
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Nome de Usuário (Login) *</label>
+                  <input type="text" id="cad-login" class="form-control" placeholder="Ex.: mariasilva" required />
+                </div>
+                <div class="form-group">
+                  <label>E-mail *</label>
+                  <input type="email" id="cad-email" class="form-control" placeholder="maria@email.com" required />
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Crie uma Senha *</label>
+                  <input type="password" id="cad-senha" class="form-control" placeholder="Mínimo 4 caracteres" required />
+                </div>
+                <div class="form-group">
+                  <label>Cargo / Vínculo / Setor *</label>
+                  <input type="text" id="cad-cargo" class="form-control" placeholder="Ex.: Estudante, Técnico, Visitante..." required />
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label>Perfil Solicitado (Sujeito à aprovação do Admin) *</label>
+                <select id="cad-modo" class="form-control">
+                  <option value="leitor">👁️ Leitor (Visualizar painéis, gráficos e baixar PDFs)</option>
+                  <option value="colaborador">🛠️ Colaborador (Visualizar + Cadastrar chuvas, pesagens e atividades)</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.75rem;">
+                📨 Enviar Solicitação para o Administrador
+              </button>
+            </form>
+          `
+              : `
+            <div class="alert-banner alert-warning" style="font-size:0.8rem; margin-bottom:1rem;">
+              <div>🔑</div>
+              <div>
+                <strong>Restauração de Administrador:</strong> Insira a chave mestra do projeto AMADEUS para entrar imediatamente como Administrador.
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label>Chave Mestra de Segurança</label>
+              <input type="password" id="gate-rec-key" class="form-control" placeholder="Digite a chave mestra..." />
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button type="button" class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="AmadeusViews.authGateTab='login'; AmadeusViews.renderApp();">
+                Voltar
+              </button>
+              <button type="button" class="btn btn-primary" style="flex:2; justify-content:center;"
+                onclick="AmadeusCore.restaurarAcessoAdminEmergencia(document.getElementById('gate-rec-key').value)">
+                🛠️ Restaurar e Entrar como Admin
+              </button>
+            </div>
+          `
+          }
+        </div>
+      </div>
+    `;
+  },
+
+  async submeterLoginGate(e) {
+    e.preventDefault();
+    const u = document.getElementById('gate-user').value;
+    const p = document.getElementById('gate-pass').value;
+    if (window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled) {
+      await window.AmadeusCloud.pullFromFirebase(true);
+    }
+    window.AmadeusCore.login(u, p);
+  },
+
+  async submeterSolicitacaoCadastro(e) {
+    e.preventDefault();
+    if (window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled) {
+      await window.AmadeusCloud.pullFromFirebase(true);
+    }
+    const ok = window.AmadeusCore.solicitarCadastro({
+      nome: document.getElementById('cad-nome').value,
+      login: document.getElementById('cad-login').value,
+      email: document.getElementById('cad-email').value,
+      senha: document.getElementById('cad-senha').value,
+      cargo: document.getElementById('cad-cargo').value,
+      modoSolicitado: document.getElementById('cad-modo').value
+    });
+    if (ok) {
+      this.authGateTab = 'login';
+      this.renderApp();
+    }
   },
 
   renderHeader() {
@@ -16,8 +214,10 @@ const AmadeusViews = {
     const core = window.AmadeusCore;
     const cfg = core.db.configuracoes;
     const u = core.currentUser;
+    if (!u) return;
     const fbOn = window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled;
     const ghOn = window.AmadeusCloud && window.AmadeusCloud.config.github.enabled;
+    const pendentes = core.db.usuarios.filter((x) => x.statusAcesso === 'pendente').length;
 
     el.innerHTML = `
       <div class="brand-area" onclick="AmadeusViews.navegar('dashboard')">
@@ -26,7 +226,7 @@ const AmadeusViews = {
           <div class="brand-title">
             ${cfg.nomeSistema}
             <span class="role-badge ${core.isAdmin() ? 'role-admin' : 'role-comum'}">
-              ${core.isAdmin() ? '👑 Admin' : '👤 Comum'}
+              ${core.getRoleLabel(u.perfil)}
             </span>
           </div>
           <div class="brand-subtitle">${cfg.subtitulo || cfg.nomeExpandido}</div>
@@ -35,27 +235,27 @@ const AmadeusViews = {
       <div class="header-actions">
         <span class="status-pill" title="Status de Conexão PWA e Nuvem">
           <span class="status-dot ${core.isOnline ? '' : 'offline'}"></span>
-          ${core.isOnline ? 'Online · PWA' : 'Offline · Local'}
+          ${core.isOnline ? 'Online' : 'Offline'}
           ${fbOn ? ' · 🔥 Firebase' : ''}
           ${ghOn ? ' · 🐙 GitHub' : ''}
         </span>
+        ${
+          core.isAdmin() && pendentes > 0
+            ? `
+          <button class="btn btn-sm btn-amber" onclick="AmadeusViews.navegar('admin')" title="Solicitações de acesso aguardando sua aprovação">
+            🔔 ${pendentes} Cadastro(s) Pendente(s)
+          </button>
+        `
+            : ''
+        }
         <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.instalarPWA()" title="Instalar aplicativo no celular ou computador">
           📲 Instalar App
         </button>
-        <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.navegar('portal')" title="Abrir Vitrine Institucional">
-          🌐 Portal
-        </button>
-        <select class="form-control" style="padding:0.28rem 0.5rem; font-size:0.78rem; width:auto;"
-          onchange="AmadeusCore.switchUserQuick(this.value)" title="Alternar usuário para testar perfis Admin e Comum">
-          ${core.db.usuarios
-            .map(
-              (usr) =>
-                `<option value="${usr.id}" ${u && u.id === usr.id ? 'selected' : ''}>👤 ${usr.nome} (${usr.perfil === 'admin' ? 'Admin' : 'Comum'})</option>`
-            )
-            .join('')}
-        </select>
-        <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalLogin()" title="Login Local / Firebase Auth / Restaurar Admin">
-          🔐 Login / Nuvem
+        <span style="font-size:0.8rem; font-weight:700; color:#fff; background:rgba(255,255,255,0.14); padding:0.3rem 0.65rem; border-radius:8px;">
+          👤 ${u.nome}
+        </span>
+        <button class="btn btn-sm btn-danger" onclick="AmadeusCore.logout()" title="Encerrar sessão e voltar para a tela de login">
+          🚪 Sair
         </button>
       </div>
     `;
@@ -67,6 +267,7 @@ const AmadeusViews = {
     const core = window.AmadeusCore;
     const db = core.db;
     const notasVisiveis = core.getVisibleNotesForCurrentUser();
+    const pendentes = db.usuarios.filter((x) => x.statusAcesso === 'pendente').length;
 
     const itens = [
       { id: 'dashboard', icone: '📊', label: 'Painel Geral', badge: '' },
@@ -79,7 +280,7 @@ const AmadeusViews = {
       { id: 'producao', icone: '🌾', label: 'Produção & Estoque', badge: db.producaoEstoqueFinanceiro.estoque.length },
       { id: 'relatorios', icone: '📑', label: 'Relatórios & PDFs', badge: 'PDF' },
       { id: 'portal', icone: '🏛️', label: 'Portal Institucional', badge: db.publicacoesPortal.length },
-      { id: 'admin', icone: '⚙️', label: 'Admin, Firebase & Git', badge: core.isAdmin() ? 'Admin' : '🔒' }
+      { id: 'admin', icone: '⚙️', label: 'Admin, Acessos & Nuvem', badge: core.isAdmin() ? (pendentes > 0 ? `🔔 ${pendentes}` : 'Admin') : '🔒' }
     ];
 
     el.innerHTML = `
@@ -169,12 +370,37 @@ const AmadeusViews = {
       return s + (Number(p.horasBase) || 0) + hAtv;
     }, 0);
 
+    const pendentes = db.usuarios.filter((u) => u.statusAcesso === 'pendente');
+    const descModo = core.isAdmin()
+      ? '👑 Modo Administrador: permissão total para cadastrar, editar, excluir registros e autorizar usuários'
+      : core.isColaborador()
+      ? '🛠️ Modo Colaborador: permissão para consultar, exportar PDFs e cadastrar novos registros (edição e exclusão bloqueadas)'
+      : '👁️ Modo Leitor: permissão exclusiva de leitura e exportação de relatórios PDF/CSV (cadastros, edições e exclusões bloqueados)';
+
     return `
+      ${
+        core.isAdmin() && pendentes.length > 0
+          ? `
+        <div class="alert-banner alert-warning" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; gap:0.65rem; align-items:center;">
+            <span style="font-size:1.3rem;">🔔</span>
+            <div>
+              <strong>Atenção Administrador: existem ${pendentes.length} solicitação(ões) de cadastro aguardando sua autorização!</strong><br/>
+              Usuários pendentes: ${pendentes.map((p) => `<strong>${p.nome}</strong> (${p.email})`).join(', ')}
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="AmadeusViews.navegar('admin')">
+            ✅ Revisar e Autorizar na Aba Admin
+          </button>
+        </div>
+      `
+          : ''
+      }
       <div class="alert-banner alert-success">
         <div>🌱</div>
         <div>
           <strong>AMADEUS — ${db.configuracoes.subtitulo || 'Ambiente de Aprendizado e Desenvolvimento em SIPA na Bahia'}</strong><br/>
-          Conectado como <strong>${core.currentUser.nome}</strong> (${core.isAdmin() ? '👑 Perfil Administrador: permissão total para editar e excluir registros já lançados' : '👤 Perfil Comum: permissão para consultar, cadastrar e exportar; edição/exclusão bloqueada'}).
+          Conectado como <strong>${core.currentUser.nome}</strong> (${descModo}).
         </div>
       </div>
 
@@ -279,6 +505,7 @@ const AmadeusViews = {
   viewPluviometria() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
     const f = core.pluvFilters;
     const registros = core.getFilteredRainfall();
     const resumo = core.calcularResumoPluviometrico(registros);
@@ -299,7 +526,11 @@ const AmadeusViews = {
         <div class="card-header">
           <div class="card-title">🌧️ Controle Pluviométrico e Histórico de Chuvas (2025 & 2026)</div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalChuva()">➕ Registrar Chuva (mm)</button>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalChuva()">➕ Registrar Chuva (mm)</button>`
+                : `<span class="status-pill" title="Modo Leitor: apenas consulta e exportação">👁️ Modo Leitor</span>`
+            }
             <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.exportarCSVPluviometria()">📥 Exportar CSV</button>
             <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.exportarRelatorioPluviometricoPDF()">📄 Relatório em PDF</button>
             ${
@@ -748,6 +979,7 @@ const AmadeusViews = {
   abrirModalChuva(chuvaId = null) {
     const core = window.AmadeusCore;
     if (chuvaId && !core.requireAdmin('editar um registro pluviométrico já lançado')) return;
+    if (!chuvaId && !core.requireCreate('registrar uma nova leitura de chuva')) return;
     const existente = chuvaId ? core.db.chuvas.find((c) => c.id === chuvaId) : null;
     const item = existente || {
       data: new Date().toISOString().slice(0, 10),
@@ -806,6 +1038,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin('editar um registro pluviométrico')) return;
+    if (!idExistente && !core.requireCreate('registrar leitura de chuva')) return;
 
     const dados = {
       id: idExistente || 'pluv-' + Date.now(),
@@ -879,6 +1112,7 @@ const AmadeusViews = {
   viewAtividades() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
     const f = core.atvFilters;
     let lista = [...core.db.atividades].sort((a, b) => b.data.localeCompare(a.data));
 
@@ -902,10 +1136,14 @@ const AmadeusViews = {
           <div>
             <div class="card-title">🚜 Gestão de Atividades e Serviços Rurais</div>
             <div style="font-size:0.78rem; color:var(--slate-500);">
-              ${isAdmin ? '👑 Modo Admin: edição e exclusão liberadas para qualquer atividade lançada.' : '🔒 Edição e exclusão de atividades já lançadas restritas ao Administrador.'}
+              ${isAdmin ? '👑 Modo Admin: edição e exclusão liberadas para qualquer atividade lançada.' : canCreate ? '🛠️ Modo Colaborador: você pode cadastrar novas atividades; edição/exclusão restrita ao Admin.' : '👁️ Modo Leitor: visualização das atividades executadas.'}
             </div>
           </div>
-          <button class="btn btn-primary" onclick="AmadeusViews.abrirModalAtividade()">➕ Nova Atividade Rural</button>
+          ${
+            canCreate
+              ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalAtividade()">➕ Nova Atividade Rural</button>`
+              : `<span class="status-pill">👁️ Somente Leitura</span>`
+          }
         </div>
 
         <div class="form-grid" style="background:var(--slate-50); padding:0.85rem; border-radius:var(--radius-md); border:1px solid var(--slate-200);">
@@ -982,6 +1220,7 @@ const AmadeusViews = {
   abrirModalAtividade(atvId = null, prefill = null) {
     const core = window.AmadeusCore;
     if (atvId && !core.requireAdmin('editar uma atividade já lançada')) return;
+    if (!atvId && !core.requireCreate('cadastrar uma nova atividade rural')) return;
     const existente = atvId ? core.db.atividades.find((a) => a.id === atvId) : null;
     const item = existente || prefill || {
       titulo: '',
@@ -1100,6 +1339,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin('editar uma atividade já lançada')) return;
+    if (!idExistente && !core.requireCreate('cadastrar atividade rural')) return;
 
     const checks = Array.from(document.querySelectorAll('input[name="atv-pessoas"]:checked')).map((c) => c.value);
     const nomes = core.db.pessoas.filter((p) => checks.includes(p.id)).map((p) => p.nome);
@@ -1163,6 +1403,7 @@ const AmadeusViews = {
   viewAgendamento() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
     const lista = [...core.db.agendamentos].sort((a, b) => `${a.data} ${a.horario}`.localeCompare(`${b.data} ${b.horario}`));
 
     return `
@@ -1181,6 +1422,9 @@ const AmadeusViews = {
             </div>
           </div>
 
+          ${
+            canCreate
+              ? `
           <!-- Formulário Rápido de Agendamento -->
           <form onsubmit="AmadeusViews.salvarAgendamento(event)" style="background:var(--slate-50); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--slate-200); margin-bottom:1.25rem;">
             <div class="form-grid">
@@ -1219,6 +1463,14 @@ const AmadeusViews = {
               <button type="submit" class="btn btn-primary">🔔 Agendar e Enviar Notificação</button>
             </div>
           </form>
+          `
+              : `
+          <div class="alert-banner alert-info" style="margin-bottom:1rem;">
+            <div>👁️</div>
+            <div><strong>Modo Leitor:</strong> Você pode consultar os agendamentos e utilizar a calculadora ao lado. O cadastro de novos agendamentos é exclusivo para Colaboradores e Administradores.</div>
+          </div>
+          `
+          }
 
           <!-- Exibição dos Cartões Coloridos (Amarelo e Verde) -->
           <div class="schedule-cards-grid">
@@ -1412,6 +1664,7 @@ const AmadeusViews = {
   salvarAgendamento(e) {
     e.preventDefault();
     const core = window.AmadeusCore;
+    if (!core.requireCreate('criar um novo agendamento')) return;
     const novo = {
       id: 'agd-' + Date.now(),
       titulo: document.getElementById('ag-titulo').value.trim(),
@@ -1477,6 +1730,7 @@ const AmadeusViews = {
   viewPessoas() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
     const db = core.db;
 
     return `
@@ -1488,7 +1742,11 @@ const AmadeusViews = {
               Acompanhamento individual de carga horária, vínculo com atividades rurais, relatórios em PDF e validação biométrica.
             </div>
           </div>
-          <button class="btn btn-primary" onclick="AmadeusViews.abrirModalPessoa()">➕ Cadastrar Pessoa</button>
+          ${
+            canCreate
+              ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalPessoa()">➕ Cadastrar Pessoa</button>`
+              : `<span class="status-pill">👁️ Somente Leitura</span>`
+          }
         </div>
 
         <div class="table-responsive">
@@ -1537,9 +1795,15 @@ const AmadeusViews = {
                       </td>
                       <td>
                         <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
-                          <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalBiometria('${p.id}')" title="Registrar Ponto Biométrico">
-                            🖐️ Biometria
-                          </button>
+                          ${
+                            canCreate
+                              ? `
+                            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalBiometria('${p.id}')" title="Registrar Ponto Biométrico">
+                              🖐️ Biometria
+                            </button>
+                          `
+                              : ''
+                          }
                           <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.exportarRelatorioPessoaPDF('${p.id}')" title="Gerar Relatório de Horas em PDF">
                             📄 PDF
                           </button>
@@ -1611,6 +1875,7 @@ const AmadeusViews = {
 
   abrirModalBiometria(pessoaId) {
     const core = window.AmadeusCore;
+    if (!core.requireCreate('registrar ponto biométrico')) return;
     const p = core.db.pessoas.find((x) => x.id === pessoaId);
     if (!p) return;
 
@@ -1660,6 +1925,7 @@ const AmadeusViews = {
   confirmarBiometriaModal(e, pessoaId) {
     e.preventDefault();
     const core = window.AmadeusCore;
+    if (!core.requireCreate('registrar ponto biométrico')) return;
     const p = core.db.pessoas.find((x) => x.id === pessoaId);
     if (!p) return;
     const setor = document.getElementById('bio-setor').value;
@@ -1672,6 +1938,7 @@ const AmadeusViews = {
   abrirModalPessoa(pessoaId = null) {
     const core = window.AmadeusCore;
     if (pessoaId && !core.requireAdmin('editar o cadastro de uma pessoa')) return;
+    if (!pessoaId && !core.requireCreate('cadastrar uma nova pessoa')) return;
     const existente = pessoaId ? core.db.pessoas.find((p) => p.id === pessoaId) : null;
     const item = existente || {
       nome: '',
@@ -1730,6 +1997,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin('editar pessoa')) return;
+    if (!idExistente && !core.requireCreate('cadastrar pessoa')) return;
 
     if (idExistente) {
       const p = core.db.pessoas.find((x) => x.id === idExistente);
@@ -1790,6 +2058,7 @@ const AmadeusViews = {
   viewAnimais() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
     const animais = core.db.animais;
     const selecionado = animais.find((a) => a.id === core.animalSelecionadoId) || animais[0];
     const m = selecionado ? core.calcularMetricasAnimal(selecionado) : null;
@@ -1805,11 +2074,19 @@ const AmadeusViews = {
             </div>
           </div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAnimal()">➕ Cadastrar Animal</button>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAnimal()">➕ Cadastrar Animal</button>`
+                : `<span class="status-pill">👁️ Somente Leitura</span>`
+            }
             ${
               selecionado
                 ? `
-              <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPesagem('${selecionado.id}')">⚖️ Registrar Pesagem</button>
+              ${
+                canCreate
+                  ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPesagem('${selecionado.id}')">⚖️ Registrar Pesagem</button>`
+                  : ''
+              }
               <button class="btn btn-sm btn-amber" onclick="AmadeusCore.exportarFichaAnimalPDF('${selecionado.id}')">📄 Ficha Individual PDF</button>
               ${
                 isAdmin
@@ -1948,6 +2225,7 @@ const AmadeusViews = {
   abrirModalAnimal(animalId = null) {
     const core = window.AmadeusCore;
     if (animalId && !core.requireAdmin('editar os dados de um animal já cadastrado')) return;
+    if (!animalId && !core.requireCreate('cadastrar um novo animal')) return;
     const existente = animalId ? core.db.animais.find((a) => a.id === animalId) : null;
     const hoje = new Date().toISOString().slice(0, 10);
     const item = existente || {
@@ -2025,6 +2303,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin('editar animal')) return;
+    if (!idExistente && !core.requireCreate('cadastrar animal')) return;
 
     if (idExistente) {
       const a = core.db.animais.find((x) => x.id === idExistente);
@@ -2084,6 +2363,7 @@ const AmadeusViews = {
   abrirModalPesagem(animalId, pesagemId = null) {
     const core = window.AmadeusCore;
     if (pesagemId && !core.requireAdmin('editar uma pesagem já lançada')) return;
+    if (!pesagemId && !core.requireCreate('registrar uma nova pesagem')) return;
     const animal = core.db.animais.find((a) => a.id === animalId);
     if (!animal) return;
     const existente = pesagemId ? animal.pesagens.find((p) => p.id === pesagemId) : null;
@@ -2126,6 +2406,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (pesagemId && !core.requireAdmin('editar pesagem')) return;
+    if (!pesagemId && !core.requireCreate('registrar pesagem')) return;
     const animal = core.db.animais.find((a) => a.id === animalId);
     if (!animal) return;
 
@@ -2168,6 +2449,7 @@ const AmadeusViews = {
   viewAnotacoes() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
     const rascunho = core.getNoteDraft() || {
       titulo: '',
       categoria: 'Campo',
@@ -2196,6 +2478,9 @@ const AmadeusViews = {
         </div>
       </div>
 
+      ${
+        canCreate
+          ? `
       <div class="card">
         <div class="card-header">
           <div class="card-title">📝 Criar Nova Anotação (Rascunho Automático Ativo)</div>
@@ -2256,6 +2541,9 @@ const AmadeusViews = {
           </div>
         </form>
       </div>
+      `
+          : ''
+      }
 
       <div class="card">
         <div class="card-header">
@@ -2267,7 +2555,7 @@ const AmadeusViews = {
         <div class="schedule-cards-grid">
           ${notas
             .map((n) => {
-              const podeGerenciar = isAdmin || n.autorId === core.currentUser.id;
+              const podeGerenciar = isAdmin || (canCreate && n.autorId === core.currentUser.id);
               return `
                 <div class="card" style="margin-bottom:0; border-left:5px solid ${n.fixada ? '#f59e0b' : '#166534'};">
                   <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.35rem;">
@@ -2283,9 +2571,15 @@ const AmadeusViews = {
                     📍 ${n.localizacao || 'Sem local'}
                   </div>
                   <div style="display:flex; gap:0.35rem; flex-wrap:wrap; border-top:1px solid var(--slate-200); padding-top:0.55rem;">
-                    <button class="btn btn-sm btn-primary" onclick="AmadeusViews.converterNotaEmAtividade('${n.id}')">
-                      🚜 Converter em Atividade
-                    </button>
+                    ${
+                      canCreate
+                        ? `
+                      <button class="btn btn-sm btn-primary" onclick="AmadeusViews.converterNotaEmAtividade('${n.id}')">
+                        🚜 Converter em Atividade
+                      </button>
+                    `
+                        : ''
+                    }
                     ${
                       podeGerenciar
                         ? `
@@ -2374,6 +2668,7 @@ const AmadeusViews = {
   salvarAnotacao(e) {
     e.preventDefault();
     const core = window.AmadeusCore;
+    if (!core.requireCreate('criar uma anotação')) return;
     const isPrivada = document.getElementById('not-priv').value === 'privada';
     const rawConteudo = document.getElementById('not-conteudo').value.trim();
     const uid = core.currentUser.id;
@@ -2402,6 +2697,7 @@ const AmadeusViews = {
 
   converterNotaEmAtividade(notaId) {
     const core = window.AmadeusCore;
+    if (!core.requireCreate('converter nota em atividade')) return;
     const notas = core.getVisibleNotesForCurrentUser();
     const n = notas.find((x) => x.id === notaId);
     if (!n) return;
@@ -2446,6 +2742,7 @@ const AmadeusViews = {
   viewProducaoEstoqueFinanceiro() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
     const pef = core.db.producaoEstoqueFinanceiro;
     const receitas = pef.financeiro.filter((f) => f.tipo === 'Receita').reduce((s, f) => s + Number(f.valor), 0);
     const despesas = pef.financeiro.filter((f) => f.tipo === 'Despesa').reduce((s, f) => s + Number(f.valor), 0);
@@ -2478,7 +2775,11 @@ const AmadeusViews = {
       <div class="card">
         <div class="card-header">
           <div class="card-title">🌾 Produção Rural e Experimentos de Safra</div>
-          <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalProducao()">➕ Registrar Produção</button>
+          ${
+            canCreate
+              ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalProducao()">➕ Registrar Produção</button>`
+              : `<span class="status-pill">👁️ Somente Leitura</span>`
+          }
         </div>
         <div class="table-responsive">
           <table class="data-table">
@@ -2518,7 +2819,11 @@ const AmadeusViews = {
         <div class="card">
           <div class="card-header">
             <div class="card-title">📦 Controle de Estoque de Insumos</div>
-            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalEstoque()">➕ Novo Item</button>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalEstoque()">➕ Novo Item</button>`
+                : ''
+            }
           </div>
           <div class="table-responsive">
             <table class="data-table">
@@ -2555,7 +2860,11 @@ const AmadeusViews = {
         <div class="card">
           <div class="card-header">
             <div class="card-title">💰 Despesas e Receitas Rurais</div>
-            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalFinanceiro()">➕ Lançar Valor</button>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalFinanceiro()">➕ Lançar Valor</button>`
+                : ''
+            }
           </div>
           <div class="table-responsive">
             <table class="data-table">
@@ -2595,6 +2904,7 @@ const AmadeusViews = {
   abrirModalProducao(id = null) {
     const core = window.AmadeusCore;
     if (id && !core.requireAdmin('editar produção já lançada')) return;
+    if (!id && !core.requireCreate('registrar produção rural')) return;
     const ex = id ? core.db.producaoEstoqueFinanceiro.producao.find((x) => x.id === id) : null;
     const item = ex || { cultura: '', area: '', safra: '2026', quantidade: '', status: 'Em andamento' };
     this.abrirModalGenerico(
@@ -2620,6 +2930,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin()) return;
+    if (!idExistente && !core.requireCreate()) return;
     const lista = core.db.producaoEstoqueFinanceiro.producao;
     if (idExistente) {
       const p = lista.find((x) => x.id === idExistente);
@@ -2657,6 +2968,7 @@ const AmadeusViews = {
   abrirModalEstoque(id = null) {
     const core = window.AmadeusCore;
     if (id && !core.requireAdmin('editar item de estoque')) return;
+    if (!id && !core.requireCreate('adicionar item ao estoque')) return;
     const ex = id ? core.db.producaoEstoqueFinanceiro.estoque.find((x) => x.id === id) : null;
     const item = ex || { item: '', categoria: 'Insumos', quantidade: 1, unidade: 'kg' };
     this.abrirModalGenerico(
@@ -2682,6 +2994,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin()) return;
+    if (!idExistente && !core.requireCreate()) return;
     const lista = core.db.producaoEstoqueFinanceiro.estoque;
     if (idExistente) {
       const it = lista.find((x) => x.id === idExistente);
@@ -2719,6 +3032,7 @@ const AmadeusViews = {
   abrirModalFinanceiro(id = null) {
     const core = window.AmadeusCore;
     if (id && !core.requireAdmin('editar lançamento financeiro')) return;
+    if (!id && !core.requireCreate('registrar lançamento financeiro')) return;
     const ex = id ? core.db.producaoEstoqueFinanceiro.financeiro.find((x) => x.id === id) : null;
     const item = ex || { data: new Date().toISOString().slice(0, 10), tipo: 'Despesa', valor: '', descricao: '' };
     this.abrirModalGenerico(
@@ -2750,6 +3064,7 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin()) return;
+    if (!idExistente && !core.requireCreate()) return;
     const lista = core.db.producaoEstoqueFinanceiro.financeiro;
     if (idExistente) {
       const fn = lista.find((x) => x.id === idExistente);
@@ -3129,7 +3444,7 @@ const AmadeusViews = {
   },
 
   // ==========================================================================
-  // 11. ADMINISTRAÇÃO, FIREBASE, GITHUB, BACKUP E EXCLUSÕES (Seções 8 e 9)
+  // 11. ADMINISTRAÇÃO, AUTORIZAÇÃO DE USUÁRIOS (3 MODOS), FIREBASE E GITHUB
   // ==========================================================================
   viewAdministracao() {
     const core = window.AmadeusCore;
@@ -3140,12 +3455,9 @@ const AmadeusViews = {
             <div>🔒</div>
             <div>
               <strong>Área Administrativa Restrita:</strong>
-              Você está conectado com perfil de <strong>Acesso Comum (${core.currentUser.nome})</strong>.
-              Somente Administradores podem editar/excluir registros lançados, conectar ao Firebase/GitHub, gerenciar usuários e restaurar backups.
+              Você está conectado como <strong>${core.currentUser.nome} (${core.getRoleLabel(core.currentUser.perfil)})</strong>.
+              Somente Administradores podem autorizar novos cadastros, alterar os 3 modos de acesso (<em>Admin</em>, <em>Colaborador</em> e <em>Leitor</em>), editar/excluir registros lançados e configurar Firebase/GitHub.
             </div>
-          </div>
-          <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="AmadeusViews.abrirModalLogin()">🔐 Entrar como Administrador ou Restaurar Acesso Admin</button>
           </div>
         </div>
       `;
@@ -3154,8 +3466,148 @@ const AmadeusViews = {
     const db = core.db;
     const fb = window.AmadeusCloud ? window.AmadeusCloud.config.firebase : {};
     const gh = window.AmadeusCloud ? window.AmadeusCloud.config.github : {};
+    const pendentes = db.usuarios.filter((u) => u.statusAcesso === 'pendente');
 
     return `
+      <!-- Card Prioritário: Aprovação de Solicitações de Acesso (Cadastro via Link) -->
+      <div class="card" style="border-top:5px solid ${pendentes.length > 0 ? '#f59e0b' : '#166534'};">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🔔 Solicitações de Acesso Pendentes (${pendentes.length})</div>
+            <div style="font-size:0.8rem; color:var(--slate-600);">
+              Quando você envia o link do AMADEUS para uma pessoa e ela preenche <strong>"Solicitar Acesso"</strong> na tela de login, o pedido aparece aqui para você autorizar ou recusar e escolher o modo dela (<strong>Admin</strong>, <strong>Colaborador</strong> ou <strong>Leitor</strong>).
+            </div>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="AmadeusCloud.pullFromFirebase(false)">
+            🔄 Buscar Novas Solicitações na Nuvem
+          </button>
+        </div>
+
+        ${
+          pendentes.length > 0
+            ? `
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Solicitante</th>
+                  <th>Login & E-mail</th>
+                  <th>Cargo / Vínculo</th>
+                  <th>Data do Pedido</th>
+                  <th>Definir Modo de Acesso</th>
+                  <th>Decisão do Admin</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pendentes
+                  .map(
+                    (p) => `
+                  <tr style="background:#fffbeb;">
+                    <td><strong>${p.nome}</strong></td>
+                    <td><code>${p.login}</code><br/><span style="font-size:0.76rem; color:var(--slate-500);">${p.email}</span></td>
+                    <td>${p.cargo}</td>
+                    <td>${p.dataSolicitacao ? new Date(p.dataSolicitacao).toLocaleString('pt-BR') : 'Recente'}</td>
+                    <td>
+                      <select id="aprov-modo-${p.id}" class="form-control" style="min-width:170px;">
+                        <option value="leitor" ${p.perfil === 'leitor' ? 'selected' : ''}>👁️ Leitor (Só Visualiza/PDF)</option>
+                        <option value="colaborador" ${p.perfil === 'colaborador' ? 'selected' : ''}>🛠️ Colaborador (Cadastra)</option>
+                        <option value="admin" ${p.perfil === 'admin' ? 'selected' : ''}>👑 Admin (Controle Total)</option>
+                      </select>
+                    </td>
+                    <td>
+                      <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-primary" onclick="AmadeusCore.aprovarSolicitacaoUsuario('${p.id}', document.getElementById('aprov-modo-${p.id}').value)">
+                          ✅ Autorizar Acesso
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="AmadeusCore.recusarOuBloquearUsuario('${p.id}')">
+                          🚫 Recusar / Bloquear
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+        `
+            : `
+          <div style="background:var(--slate-50); padding:0.9rem 1rem; border-radius:8px; border:1px solid var(--slate-200); font-size:0.85rem; color:var(--slate-600);">
+            ✅ Nenhuma solicitação pendente no momento. Todas as contas cadastradas já foram avaliadas.
+          </div>
+        `
+        }
+      </div>
+
+      <!-- Controle de Usuários e dos 3 Modos (Admin, Colaborador, Leitor) -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🔐 Controle de Usuários, Autorizações e 3 Modos de Acesso</div>
+            <div style="font-size:0.8rem; color:var(--slate-500);">
+              Altere a qualquer momento o modo de cada pessoa entre <strong>👑 Admin</strong>, <strong>🛠️ Colaborador</strong> e <strong>👁️ Leitor</strong>, ou bloqueie/libere o acesso ao sistema.
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalUsuario()">➕ Cadastrar Usuário Diretamente</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Login / E-mail</th>
+                <th>Cargo</th>
+                <th>Modo de Acesso (Definido pelo Admin)</th>
+                <th>Status de Autorização</th>
+                <th>Ações (Admin)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${db.usuarios
+                .map((u) => {
+                  const st = u.statusAcesso || (u.ativo === false ? 'bloqueado' : 'aprovado');
+                  const badgeSt =
+                    st === 'aprovado'
+                      ? '<span style="color:var(--green-700); font-weight:700;">✅ Autorizado</span>'
+                      : st === 'pendente'
+                      ? '<span style="color:var(--amber-600); font-weight:700;">⏳ Pendente</span>'
+                      : '<span style="color:#dc2626; font-weight:700;">🚫 Bloqueado</span>';
+
+                  return `
+                <tr>
+                  <td><strong>${u.nome}</strong></td>
+                  <td><code>${u.login}</code><br/><span style="font-size:0.75rem; color:var(--slate-500);">${u.email}</span></td>
+                  <td>${u.cargo}</td>
+                  <td>
+                    <select class="form-control" style="padding:0.3rem 0.5rem; font-size:0.82rem; font-weight:700; min-width:165px;"
+                      onchange="AmadeusCore.alterarModoUsuario('${u.id}', this.value)">
+                      <option value="admin" ${u.perfil === 'admin' ? 'selected' : ''}>👑 Admin (Total)</option>
+                      <option value="colaborador" ${u.perfil === 'colaborador' ? 'selected' : ''}>🛠️ Colaborador (Registra)</option>
+                      <option value="leitor" ${u.perfil === 'leitor' ? 'selected' : ''}>👁️ Leitor (Visualiza)</option>
+                    </select>
+                  </td>
+                  <td>${badgeSt}</td>
+                  <td>
+                    <div style="display:flex; gap:0.3rem; flex-wrap:wrap;">
+                      ${
+                        st !== 'aprovado'
+                          ? `<button class="btn btn-sm btn-primary" onclick="AmadeusCore.aprovarSolicitacaoUsuario('${u.id}', '${u.perfil}')">✅ Autorizar</button>`
+                          : `<button class="btn btn-sm btn-amber" onclick="AmadeusCore.recusarOuBloquearUsuario('${u.id}')" title="Bloquear acesso deste usuário">🚫 Bloquear</button>`
+                      }
+                      <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalUsuario('${u.id}')">✏️ Editar</button>
+                      <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirUsuario('${u.id}')">🗑️</button>
+                    </div>
+                  </td>
+                </tr>`;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Painel Profissional de Integração Firebase & GitHub -->
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:1.25rem; margin-bottom:1.25rem;">
         <!-- Card Firebase -->
@@ -3167,7 +3619,7 @@ const AmadeusViews = {
             </span>
           </div>
           <p style="font-size:0.82rem; color:var(--slate-600); margin-bottom:0.85rem;">
-            Conecte seu projeto do <strong>Firebase Console</strong> para sincronizar todas as chuvas, animais, pesagens e atividades em tempo real na nuvem e habilitar login via Firebase Authentication.
+            Conecte seu projeto do <strong>Firebase Console</strong> para sincronizar todas as chuvas, animais, pesagens, usuários e solicitações de acesso em tempo real na nuvem.
           </p>
           <div style="background:var(--amber-50); border:1px solid #fcd34d; border-radius:8px; padding:0.65rem; margin-bottom:0.85rem;">
             <label style="font-size:0.78rem; font-weight:700; color:#78350f; display:block; margin-bottom:0.3rem;">
@@ -3184,7 +3636,7 @@ const AmadeusViews = {
             <div class="form-grid">
               <div class="form-group">
                 <label>Firebase Project ID *</label>
-                <input type="text" id="fb-proj" class="form-control" value="${fb.projectId || ''}" placeholder="Ex.: amadeus-ifbaiano" required />
+                <input type="text" id="fb-proj" class="form-control" value="${fb.projectId || ''}" placeholder="Ex.: amadeus-80eeb" required />
               </div>
               <div class="form-group">
                 <label>Firebase Web API Key</label>
@@ -3193,7 +3645,7 @@ const AmadeusViews = {
             </div>
             <div class="form-group" style="margin-bottom:0.85rem;">
               <label>Realtime Database URL *</label>
-              <input type="url" id="fb-url" class="form-control" value="${fb.databaseURL || ''}" placeholder="https://amadeus-ifbaiano-default-rtdb.firebaseio.com" required />
+              <input type="url" id="fb-url" class="form-control" value="${fb.databaseURL || ''}" placeholder="https://amadeus-80eeb-default-rtdb.firebaseio.com" required />
             </div>
             <div style="display:flex; gap:0.45rem; flex-wrap:wrap; justify-content:space-between; align-items:center;">
               <span style="font-size:0.74rem; color:var(--slate-500);">
@@ -3216,17 +3668,17 @@ const AmadeusViews = {
             </span>
           </div>
           <p style="font-size:0.82rem; color:var(--slate-600); margin-bottom:0.85rem;">
-            Publique e salve backups versionados diretamente no seu repositório do <strong>GitHub</strong> via API REST (já inclui workflow <code>.github/workflows/deploy-pages.yml</code> pronto para GitHub Pages!).
+            Publique e salve backups versionados diretamente no seu repositório do <strong>GitHub</strong> via API REST.
           </p>
           <form onsubmit="AmadeusViews.salvarFormGitHub(event)">
             <div class="form-grid">
               <div class="form-group">
                 <label>Usuário / Organização GitHub *</label>
-                <input type="text" id="gh-owner" class="form-control" value="${gh.owner || ''}" placeholder="Ex.: guilhermedias" required />
+                <input type="text" id="gh-owner" class="form-control" value="${gh.owner || ''}" placeholder="Ex.: dg4565198-coder" required />
               </div>
               <div class="form-group">
                 <label>Nome do Repositório *</label>
-                <input type="text" id="gh-repo" class="form-control" value="${gh.repo || 'amadeus-gestao-rural'}" required />
+                <input type="text" id="gh-repo" class="form-control" value="${gh.repo || 'amadeus'}" required />
               </div>
             </div>
             <div class="form-group" style="margin-bottom:0.85rem;">
@@ -3248,7 +3700,7 @@ const AmadeusViews = {
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">⚙️ Administração Geral, Backup Local e Histórico de Exclusões</div>
+          <div class="card-title">⚙️ Backup Completo (.JSON) e Histórico de Exclusões</div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="AmadeusCore.exportarBackupCompletoJSON()">💾 Criar Backup Completo (.JSON)</button>
             <label class="btn btn-amber" style="margin:0;">
@@ -3256,45 +3708,6 @@ const AmadeusViews = {
               <input type="file" accept=".json" style="display:none;" onchange="AmadeusCore.restaurarBackupJSON(this.files[0])" />
             </label>
           </div>
-        </div>
-
-        <!-- Controle de Usuários e Permissões -->
-        <div class="card-header" style="margin-top:0.5rem;">
-          <div class="card-title">🔐 Controle de Usuários e Permissões de Acesso</div>
-          <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalUsuario()">➕ Novo Usuário</button>
-        </div>
-        <div class="table-responsive" style="margin-bottom:1.5rem;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Login / E-mail</th>
-                <th>Cargo</th>
-                <th>Perfil</th>
-                <th>Status</th>
-                <th>Ações (Admin)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${db.usuarios
-                .map(
-                  (u) => `
-                <tr>
-                  <td><strong>${u.nome}</strong></td>
-                  <td><code>${u.login}</code> (${u.email})</td>
-                  <td>${u.cargo}</td>
-                  <td><span class="role-badge ${u.perfil === 'admin' ? 'role-admin' : 'role-comum'}">${u.perfil.toUpperCase()}</span></td>
-                  <td>${u.ativo ? '🟢 Ativo' : '🔴 Bloqueado'}</td>
-                  <td>
-                    <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalUsuario('${u.id}')">✏️ Editar</button>
-                    <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.alternarPerfilUsuario('${u.id}')">🔄 Admin/Comum</button>
-                    <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirUsuario('${u.id}')">🗑️</button>
-                  </td>
-                </tr>`
-                )
-                .join('')}
-            </tbody>
-          </table>
         </div>
 
         <!-- Histórico de Exclusões (Lixeira Auditável) -->
@@ -3381,22 +3794,19 @@ const AmadeusViews = {
     });
   },
 
-  alternarPerfilUsuario(userId) {
-    const core = window.AmadeusCore;
-    if (!core.requireAdmin()) return;
-    const u = core.db.usuarios.find((x) => x.id === userId);
-    if (!u) return;
-    u.perfil = u.perfil === 'admin' ? 'comum' : 'admin';
-    core.saveDatabase(`Alterou perfil de ${u.nome} para ${u.perfil}`);
-    core.toast(`Perfil de ${u.nome} atualizado para ${u.perfil.toUpperCase()}.`);
-    this.renderApp();
-  },
-
   abrirModalUsuario(usrId = null) {
     const core = window.AmadeusCore;
     if (!core.requireAdmin()) return;
     const ex = usrId ? core.db.usuarios.find((u) => u.id === usrId) : null;
-    const item = ex || { nome: '', login: '', email: '', senhaHash: '123456', cargo: 'Colaborador Rural', perfil: 'comum' };
+    const item = ex || {
+      nome: '',
+      login: '',
+      email: '',
+      senhaHash: '123456',
+      cargo: 'Colaborador Rural',
+      perfil: 'colaborador',
+      statusAcesso: 'aprovado'
+    };
 
     this.abrirModalGenerico(
       ex ? `✏️ Editar Usuário — ${item.nome}` : '➕ Cadastrar Usuário do Sistema',
@@ -3406,13 +3816,22 @@ const AmadeusViews = {
             <div class="form-group"><label>Nome Completo *</label><input type="text" id="usr-nome" class="form-control" value="${item.nome}" required /></div>
             <div class="form-group"><label>Login *</label><input type="text" id="usr-login" class="form-control" value="${item.login}" required /></div>
             <div class="form-group"><label>E-mail *</label><input type="email" id="usr-email" class="form-control" value="${item.email}" required /></div>
-            <div class="form-group"><label>Senha *</label><input type="password" id="usr-senha" class="form-control" value="${item.senhaHash}" required /></div>
-            <div class="form-group"><label>Cargo</label><input type="text" id="usr-cargo" class="form-control" value="${item.cargo}" /></div>
+            <div class="form-group"><label>Senha *</label><input type="text" id="usr-senha" class="form-control" value="${item.senhaHash}" required /></div>
+            <div class="form-group"><label>Cargo / Setor</label><input type="text" id="usr-cargo" class="form-control" value="${item.cargo}" /></div>
             <div class="form-group">
-              <label>Perfil de Permissão *</label>
+              <label>Modo de Acesso *</label>
               <select id="usr-perfil" class="form-control">
-                <option value="comum" ${item.perfil === 'comum' ? 'selected' : ''}>Acesso Comum (Consulta, Registro e Exportação)</option>
-                <option value="admin" ${item.perfil === 'admin' ? 'selected' : ''}>Administrador (Edição/Exclusão Total + Portal + Nuvem)</option>
+                <option value="leitor" ${item.perfil === 'leitor' ? 'selected' : ''}>👁️ Leitor (Somente Visualização e PDF)</option>
+                <option value="colaborador" ${item.perfil === 'colaborador' ? 'selected' : ''}>🛠️ Colaborador (Visualiza e Cadastra)</option>
+                <option value="admin" ${item.perfil === 'admin' ? 'selected' : ''}>👑 Admin (Controle Total)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Status de Autorização *</label>
+              <select id="usr-status" class="form-control">
+                <option value="aprovado" ${item.statusAcesso === 'aprovado' ? 'selected' : ''}>✅ Autorizado (Pode entrar)</option>
+                <option value="pendente" ${item.statusAcesso === 'pendente' ? 'selected' : ''}>⏳ Pendente (Aguardando aprovação)</option>
+                <option value="bloqueado" ${item.statusAcesso === 'bloqueado' ? 'selected' : ''}>🚫 Bloqueado (Sem acesso)</option>
               </select>
             </div>
           </div>
@@ -3429,6 +3848,15 @@ const AmadeusViews = {
     e.preventDefault();
     const core = window.AmadeusCore;
     if (!core.requireAdmin()) return;
+    const modo = document.getElementById('usr-perfil').value;
+    const statusAcesso = document.getElementById('usr-status').value;
+    const permissoes =
+      modo === 'admin'
+        ? ['total']
+        : modo === 'colaborador'
+        ? ['consultar', 'registrar', 'exportar']
+        : ['consultar', 'exportar'];
+
     if (idExistente) {
       const u = core.db.usuarios.find((x) => x.id === idExistente);
       if (u) {
@@ -3437,7 +3865,10 @@ const AmadeusViews = {
         u.email = document.getElementById('usr-email').value.trim();
         u.senhaHash = document.getElementById('usr-senha').value;
         u.cargo = document.getElementById('usr-cargo').value.trim();
-        u.perfil = document.getElementById('usr-perfil').value;
+        u.perfil = modo;
+        u.statusAcesso = statusAcesso;
+        u.ativo = statusAcesso === 'aprovado';
+        u.permissoes = permissoes;
       }
     } else {
       core.db.usuarios.push({
@@ -3447,9 +3878,10 @@ const AmadeusViews = {
         email: document.getElementById('usr-email').value.trim(),
         senhaHash: document.getElementById('usr-senha').value,
         cargo: document.getElementById('usr-cargo').value.trim(),
-        perfil: document.getElementById('usr-perfil').value,
-        ativo: true,
-        permissoes: ['consultar', 'registrar', 'exportar']
+        perfil: modo,
+        statusAcesso,
+        ativo: statusAcesso === 'aprovado',
+        permissoes
       });
     }
     core.saveDatabase('Salvou usuário');
@@ -3469,63 +3901,6 @@ const AmadeusViews = {
     core.saveDatabase('Excluiu usuário');
     core.toast('Usuário removido.');
     this.renderApp();
-  },
-
-  abrirModalLogin() {
-    this.abrirModalGenerico(
-      '🔐 Login AMADEUS (Local & Firebase Auth) e Recuperação Admin',
-      `
-        <form onsubmit="AmadeusViews.executarLoginModal(event)" style="margin-bottom:1.1rem;">
-          <h4 style="font-size:0.9rem; color:var(--green-900); margin-bottom:0.5rem;">1. Acesso Rápido AMADEUS</h4>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Login ou E-mail</label>
-              <input type="text" id="lg-user" class="form-control" value="guilherme" required />
-            </div>
-            <div class="form-group">
-              <label>Senha</label>
-              <input type="password" id="lg-pass" class="form-control" value="admin123" required />
-            </div>
-          </div>
-          <div style="font-size:0.76rem; color:var(--slate-500); margin-bottom:0.75rem;">
-            Contas: <code>guilherme</code> / <code>admin123</code> (Admin) · <code>charles</code> / <code>charles123</code> (Admin) · <code>zeca</code> / <code>zeca123</code> (Comum) · <code>alisson</code> / <code>alisson123</code> (Comum).
-          </div>
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button type="submit" class="btn btn-primary">🔑 Entrar no Sistema</button>
-            <button type="button" class="btn btn-amber" onclick="AmadeusViews.executarLoginFirebaseModal()">🔥 Autenticar via Firebase Auth</button>
-          </div>
-        </form>
-
-        <div style="border-top:1px solid var(--slate-200); padding-top:1rem;">
-          <h4 style="font-size:0.9rem; color:var(--green-900); margin-bottom:0.35rem;">2. Restaurar Acesso Administrativo de Emergência</h4>
-          <p style="font-size:0.78rem; color:var(--slate-600); margin-bottom:0.5rem;">
-            Insira a chave de segurança do projeto (padrão: <code>AMADEUS-ADMIN-2026</code>):
-          </p>
-          <div style="display:flex; gap:0.5rem;">
-            <input type="text" id="rec-key" class="form-control" value="AMADEUS-ADMIN-2026" />
-            <button type="button" class="btn btn-secondary" onclick="if(AmadeusCore.restaurarAcessoAdminEmergencia(document.getElementById('rec-key').value)) AmadeusViews.fecharModal();">
-              🛠️ Restaurar Admin
-            </button>
-          </div>
-        </div>
-      `
-    );
-  },
-
-  executarLoginModal(e) {
-    e.preventDefault();
-    const ok = window.AmadeusCore.login(
-      document.getElementById('lg-user').value,
-      document.getElementById('lg-pass').value
-    );
-    if (ok) this.fecharModal();
-  },
-
-  async executarLoginFirebaseModal() {
-    const email = document.getElementById('lg-user').value.trim();
-    const pass = document.getElementById('lg-pass').value;
-    const ok = await window.AmadeusCloud.loginComFirebaseAuth(email, pass);
-    if (ok) this.fecharModal();
   },
 
   // ==========================================================================
