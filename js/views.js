@@ -518,13 +518,6 @@ const AmadeusViews = {
       `
           : ''
       }
-      <div class="alert-banner alert-success">
-        <div>🌱</div>
-        <div>
-          <strong>AMADEUS — ${db.configuracoes.subtitulo || 'Ambiente de Aprendizado e Desenvolvimento em SIPA na Bahia'}</strong><br/>
-          Conectado como <strong>${core.currentUser.nome}</strong> (${descModo}).
-        </div>
-      </div>
 
       <div class="kpi-grid">
         <div class="kpi-card blue" onclick="AmadeusViews.navegar('pluviometria')" style="cursor:pointer;">
@@ -629,12 +622,22 @@ const AmadeusViews = {
     const isAdmin = core.isAdmin();
     const canCreate = core.canCreate();
     const f = core.pluvFilters;
+    if (!['combo', 'linha', 'mensal', 'comparativo', 'pluviometros'].includes(f.modoGrafico)) {
+      f.modoGrafico = 'combo';
+    }
     const registros = core.getFilteredRainfall();
     const resumo = core.calcularResumoPluviometrico(registros);
     const pluviometrosUnicos = Array.from(new Set(core.db.chuvas.map((c) => c.pluviometro)));
     const isFullscreen = core.chartFullscreenId === 'pluv-chart';
 
+    // A barra amarela de aviso metodológico de 2025 SÓ aparece quando a pessoa seleciona 2025 ou compara 2025 e 2026
+    const mostrarAviso2025 = f.ano === '2025' || f.ano === 'todos' || f.modoGrafico === 'comparativo';
+    const st = resumo.statusHidrico;
+
     return `
+      ${
+        mostrarAviso2025
+          ? `
       <div class="alert-banner alert-warning">
         <div>⚠️</div>
         <div>
@@ -643,10 +646,18 @@ const AmadeusViews = {
           No AMADEUS, <strong>ausência de registro nunca é interpretada como chuva igual a zero (0 mm)</strong>. Dias secos efetivamente lidos constam explicitamente com <code>0 mm</code>.
         </div>
       </div>
+      `
+          : ''
+      }
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🌧️ Controle Pluviométrico e Histórico de Chuvas (2025 & 2026)</div>
+          <div>
+            <div class="card-title">🌧️ Monitoramento Pluviométrico & Apoio à Tomada de Decisão</div>
+            <div style="font-size:0.8rem; color:var(--slate-500);">
+              Análise de precipitação diária, soma progressiva acumulada, balanço hídrico e recomendações técnicas para manejo SIPA
+            </div>
+          </div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             ${
               canCreate
@@ -673,9 +684,9 @@ const AmadeusViews = {
           <div class="form-group">
             <label>Filtrar por Ano</label>
             <select class="form-control" onchange="AmadeusViews.setPluvFilter('ano', this.value)">
-              <option value="todos" ${f.ano === 'todos' ? 'selected' : ''}>Todos (2025 e 2026)</option>
-              <option value="2025" ${f.ano === '2025' ? 'selected' : ''}>2025</option>
-              <option value="2026" ${f.ano === '2026' ? 'selected' : ''}>2026</option>
+              <option value="2026" ${f.ano === '2026' ? 'selected' : ''}>2026 (Janeiro a Agosto)</option>
+              <option value="2025" ${f.ano === '2025' ? 'selected' : ''}>2025 (Maio a Dezembro)</option>
+              <option value="todos" ${f.ano === 'todos' ? 'selected' : ''}>Comparar 2025 e 2026 (Todos)</option>
             </select>
           </div>
           <div class="form-group">
@@ -712,75 +723,140 @@ const AmadeusViews = {
           </div>
           <div class="form-group" style="justify-content:flex-end;">
             <label>Atalhos de Período</label>
-            <div style="display:flex; gap:0.4rem;">
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
               <button class="btn btn-sm ${f.ultimos7Dias ? 'btn-primary' : 'btn-secondary'}"
                 onclick="AmadeusViews.setPluvFilter('ultimos7Dias', ${!f.ultimos7Dias})">
-                🗓️ Filtro 7 Dias
+                🗓️ Últimos 7 Dias
               </button>
               <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.limparFiltrosPluv()">
-                🔄 Limpar
+                🔄 Padrão (2026)
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Conceitos e Indicadores do Painel -->
+        <!-- KPIs Principais e Indicadores de Tomada de Decisão -->
         <div class="kpi-grid">
           <div class="kpi-card blue">
             <div class="kpi-label">Acumulado no Período</div>
             <div class="kpi-value">${resumo.acumuladoMm.toFixed(1)} mm</div>
-            <div class="kpi-sub">Soma da precipitação no intervalo exibido</div>
+            <div class="kpi-sub">Últimos 30d: <strong>${resumo.acum30d.toFixed(1)} mm</strong> · 15d: <strong>${resumo.acum15d.toFixed(1)} mm</strong></div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">Média (Dias Medidos)</div>
-            <div class="kpi-value">${resumo.mediaPorDiaRegistrado.toFixed(2)} mm</div>
-            <div class="kpi-sub">Média nos dias chuvosos: ${resumo.mediaNosDiasChuvosos.toFixed(1)} mm</div>
+            <div class="kpi-label">Média por Dia Chuvoso</div>
+            <div class="kpi-value">${resumo.mediaNosDiasChuvosos.toFixed(1)} mm</div>
+            <div class="kpi-sub">Média geral (com secos): ${resumo.mediaPorDiaRegistrado.toFixed(1)} mm/leitura</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">Dias com Chuva (&gt; 0 mm)</div>
-            <div class="kpi-value">${resumo.diasComChuva} dias</div>
-            <div class="kpi-sub">De ${resumo.totalRegistros} leituras registradas</div>
+            <div class="kpi-label">Chuvas Úteis (&ge; 5 mm)</div>
+            <div class="kpi-value">${resumo.chuvasUteisCount} eventos</div>
+            <div class="kpi-sub">${resumo.chuvasUteisMm.toFixed(1)} mm efetivos p/ solo e pastagem</div>
           </div>
           <div class="kpi-card amber">
-            <div class="kpi-label">Dias com 0 mm Medidos</div>
-            <div class="kpi-value">${resumo.diasZeroMm} dias</div>
-            <div class="kpi-sub">Leituras confirmadas sem precipitação</div>
+            <div class="kpi-label">Regularidade &amp; Veranico</div>
+            <div class="kpi-value">${resumo.frequenciaChuvaPct.toFixed(0)}% chuvoso</div>
+            <div class="kpi-sub">${resumo.diasComChuva} chuvosos · ${resumo.diasZeroMm} secos (Máx. ${resumo.maiorVeranicoLeituras} leituras s/ chuva útil)</div>
           </div>
           <div class="kpi-card blue">
-            <div class="kpi-label">Maior Precipitação Diária</div>
+            <div class="kpi-label">Pico Diário &amp; Intensidade</div>
             <div class="kpi-value">${resumo.maiorChuva ? Number(resumo.maiorChuva.mm).toFixed(1) + ' mm' : '0 mm'}</div>
-            <div class="kpi-sub">${resumo.maiorChuva ? core.formatDateBR(resumo.maiorChuva.data) + ' · ' + resumo.maiorChuva.local : '—'}</div>
+            <div class="kpi-sub">${resumo.maiorChuva ? core.formatDateBR(resumo.maiorChuva.data) : '—'} · ${resumo.eventosExtremos} evento(s) &ge; 50 mm</div>
           </div>
         </div>
 
-        <!-- Painel Gráfico Interativo com Expansão Tela Cheia -->
-        <div class="chart-container ${isFullscreen ? 'fullscreen' : ''}" id="pluv-chart-box">
-          <div class="card-header">
+        <!-- Painel Gráfico Profissional (Combo Diário + Acumulado, Linha de Tendência, Mensal e Comparativo) -->
+        <div class="chart-container ${isFullscreen ? 'fullscreen' : ''}" id="pluv-chart-box" style="padding:1.25rem; border-radius:14px; box-shadow:var(--shadow-sm);">
+          <div class="card-header" style="margin-bottom:0.75rem; border-bottom:1px solid var(--slate-100); padding-bottom:0.75rem;">
             <div>
-              <div class="card-title">📊 Análise Gráfica Interativa (Clique em uma coluna para consultar detalhes)</div>
-              <div style="font-size:0.78rem; color:var(--slate-500);">
-                Alterne entre visão Mensal, Diária, Comparação Temporal (2025 vs 2026) e Comparação entre Pluviômetros
+              <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--green-700); margin-bottom:0.15rem;">
+                PRECIPITAÇÃO E EVOLUÇÃO HÍDRICA
+              </div>
+              <div style="font-size:1.35rem; font-weight:800; color:var(--slate-900); font-family:Georgia, 'Times New Roman', serif; line-height:1.2;">
+                ${
+                  f.modoGrafico === 'combo'
+                    ? 'Chuva diária + acumulado'
+                    : f.modoGrafico === 'linha'
+                    ? 'Curva de Precipitação Diária, Média Móvel e Limiares Agronômicos'
+                    : f.modoGrafico === 'mensal'
+                    ? 'Distribuição Mensal Consolidada + Linha de Tendência'
+                    : f.modoGrafico === 'comparativo'
+                    ? 'Comparativo Pluviométrico 2025 × 2026 (Colunas + Linhas)'
+                    : 'Acumulado por Pluviômetro / Ponto de Coleta'
+                }
+              </div>
+              <div style="font-size:0.82rem; color:var(--slate-500); margin-top:0.15rem;">
+                ${
+                  f.modoGrafico === 'combo'
+                    ? 'Chuva de cada dia nas colunas e soma progressiva na linha. Clique em qualquer ponto ou coluna para inspecionar.'
+                    : f.modoGrafico === 'linha'
+                    ? 'Gráfico de linhas com precipitação diária, tendência suavizada (média móvel 7 leituras) e limiares para tomada de decisão.'
+                    : 'Clique em qualquer elemento do gráfico para consultar o detalhamento técnico.'
+                }
               </div>
             </div>
-            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-sm ${f.modoGrafico === 'combo' ? 'btn-primary' : 'btn-secondary'}"
+                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'combo')">📊 Diária + Acumulado</button>
+              <button class="btn btn-sm ${f.modoGrafico === 'linha' ? 'btn-primary' : 'btn-secondary'}"
+                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'linha')">📈 Gráfico de Linha (Tendência)</button>
               <button class="btn btn-sm ${f.modoGrafico === 'mensal' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'mensal')">Por Mês</button>
-              <button class="btn btn-sm ${f.modoGrafico === 'diario' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'diario')">Por Dia</button>
+                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'mensal')">📅 Mensal</button>
               <button class="btn btn-sm ${f.modoGrafico === 'comparativo' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'comparativo')">Comparar 2025 × 2026</button>
-              <button class="btn btn-sm ${f.modoGrafico === 'pluviometros' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'pluviometros')">Comparar Pluviômetros / Locais</button>
-              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.toggleChartFullscreen('pluv-chart')">
-                ${isFullscreen ? '🗗 Sair da Tela Cheia' : '⛶ Expandir Tela Cheia'}
+                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'comparativo')">⚖️ Comparar 2025 × 2026</button>
+              <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.toggleChartFullscreen('pluv-chart')" style="border-color:var(--slate-300);">
+                ${isFullscreen ? '🗗 Sair da Tela Cheia' : '⛶ Tela cheia'}
               </button>
             </div>
           </div>
           ${this.renderGraficoPluviometrico(registros, resumo)}
         </div>
 
+        <!-- Painel Técnico de Apoio à Tomada de Decisão Agronômica (SIPA) -->
+        <div style="background:linear-gradient(145deg, #f8fafc 0%, #f0fdf4 100%); border:1px solid var(--green-200); border-radius:var(--radius-lg); padding:1.15rem; margin-bottom:1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:0.9rem;">
+            <div>
+              <div style="font-size:0.72rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:var(--green-800);">
+                🧭 INTELIGÊNCIA CLIMÁTICA · APOIO À TOMADA DE DECISÃO NO CAMPO
+              </div>
+              <div style="font-size:1.05rem; font-weight:800; color:var(--slate-900);">
+                Diagnóstico Hídrico e Recomendações de Manejo (SIPA / Pastagem / Solo)
+              </div>
+            </div>
+            <span style="background:${st.bg}; color:${st.cor}; border:1px solid ${st.borda}; padding:0.35rem 0.8rem; border-radius:999px; font-size:0.8rem; font-weight:800;">
+              ${st.icone} ${st.titulo}
+            </span>
+          </div>
+
+          <div class="responsive-grid-2" style="margin-bottom:0;">
+            <div style="background:#ffffff; border:1px solid var(--slate-200); border-left:4px solid #0284c7; border-radius:10px; padding:0.85rem;">
+              <div style="font-size:0.82rem; font-weight:800; color:#0369a1; margin-bottom:0.3rem;">
+                🌱 1. Janela de Adubação, Semeadura e Manejo Cultural
+              </div>
+              <p style="font-size:0.81rem; color:var(--slate-700); margin-bottom:0.45rem;">
+                ${resumo.recomendacaoAdubacao}
+              </p>
+              <div style="font-size:0.75rem; color:var(--slate-500); display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <span>• Chuvas úteis (&ge; 5 mm): <strong>${resumo.chuvasUteisCount} dias</strong></span>
+                <span>• Chuvas moderadas (10–30 mm): <strong>${resumo.eventosModerados} dias</strong></span>
+              </div>
+            </div>
+
+            <div style="background:#ffffff; border:1px solid var(--slate-200); border-left:4px solid #16a34a; border-radius:10px; padding:0.85rem;">
+              <div style="font-size:0.82rem; font-weight:800; color:#15803d; margin-bottom:0.3rem;">
+                🐄 2. Manejo de Pastagem, Lotação Animal e Conservação do Solo
+              </div>
+              <p style="font-size:0.81rem; color:var(--slate-700); margin-bottom:0.45rem;">
+                ${resumo.recomendacaoPastagem}
+              </p>
+              <div style="font-size:0.75rem; color:var(--slate-600);">
+                🛡️ <strong>Solo &amp; Erosão:</strong> ${resumo.recomendacaoSolo}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Tabela Histórica de Registros -->
-        <div class="card-header" style="margin-top:1rem;">
+        <div class="card-header" style="margin-top:0.5rem;">
           <div class="card-title">📋 Registros Diários Consultados (${registros.length} medições exibidas)</div>
           <span style="font-size:0.78rem; color:var(--slate-500);">
             ${isAdmin ? '👑 Modo Admin: você pode editar ou excluir qualquer leitura já lançada.' : '🔒 Edição e exclusão de leituras lançadas restritas ao Administrador.'}
@@ -792,30 +868,41 @@ const AmadeusViews = {
               <tr>
                 <th>Data</th>
                 <th>Precipitação</th>
-                <th>Horário</th>
-                <th>Pluviômetro</th>
-                <th>Local</th>
+                <th>Acumulado Prog.</th>
+                <th>Classificação Agronômica</th>
+                <th>Pluviômetro / Local</th>
                 <th>Responsável</th>
-                <th>Observação / Histórico</th>
+                <th>Observação</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              ${registros
+              ${resumo.serieDiariaAcumulada
                 .slice()
                 .reverse()
-                .map(
-                  (r) => `
+                .map((r) => {
+                  const mm = Number(r.mm) || 0;
+                  const classeAgro =
+                    mm === 0
+                      ? '<span style="color:#64748b; font-size:0.75rem;">☀️ Dia seco (0 mm)</span>'
+                      : mm < 5
+                      ? '<span style="color:#d97706; font-size:0.75rem; font-weight:600;">🌦️ Leve (&lt; 5 mm)</span>'
+                      : mm < 30
+                      ? '<span style="color:#15803d; font-size:0.75rem; font-weight:700;">🌱 Chuva Útil (5–30 mm)</span>'
+                      : mm < 50
+                      ? '<span style="color:#0284c7; font-size:0.75rem; font-weight:700;">🌧️ Forte (30–50 mm)</span>'
+                      : '<span style="color:#dc2626; font-size:0.75rem; font-weight:800;">⚠️ Extrema (&ge; 50 mm)</span>';
+                  return `
                 <tr>
                   <td><strong>${core.formatDateBR(r.data)}</strong></td>
                   <td>
-                    <span style="font-weight:800; color:${Number(r.mm) > 0 ? '#0369a1' : '#64748b'};">
-                      ${Number(r.mm).toFixed(1)} mm
+                    <span style="font-weight:800; color:${mm > 0 ? '#0284c7' : '#64748b'};">
+                      ${mm.toFixed(1)} mm
                     </span>
                   </td>
-                  <td>${r.horario}</td>
-                  <td>${r.pluviometro}</td>
-                  <td>${r.local}</td>
+                  <td><strong style="color:var(--green-800);">${r.acumulado.toFixed(1)} mm</strong></td>
+                  <td>${classeAgro}</td>
+                  <td>${r.pluviometro}<br/><span style="font-size:0.72rem; color:var(--slate-500);">${r.local}</span></td>
                   <td>${r.responsavel}</td>
                   <td style="font-size:0.78rem; color:var(--slate-600);">${r.observacao || '—'}</td>
                   <td>
@@ -832,8 +919,8 @@ const AmadeusViews = {
                     </div>
                   </td>
                 </tr>
-              `
-                )
+              `;
+                })
                 .join('')}
             </tbody>
           </table>
@@ -844,13 +931,328 @@ const AmadeusViews = {
 
   renderGraficoPluviometrico(registros, resumo) {
     const core = window.AmadeusCore;
-    const modo = core.pluvFilters.modoGrafico;
+    const f = core.pluvFilters;
+    const modo = f.modoGrafico || 'combo';
+    const serie = resumo.serieDiariaAcumulada || [];
 
+    // ========================================================================
+    // MODO 1: COMBO "CHUVA DIÁRIA + ACUMULADO" (Colunas Azuis + Linha Verde Progressiva)
+    // ========================================================================
+    if (modo === 'combo') {
+      if (serie.length === 0) {
+        return `<p style="padding:1rem; color:var(--slate-500);">Nenhum registro para o filtro selecionado.</p>`;
+      }
+
+      const W = 980;
+      const H = 370;
+      const padL = 58;
+      const padR = 64;
+      const padT = 38;
+      const padB = 48;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      const maxDiaRaw = Math.max(20, ...serie.map((d) => d.mm));
+      const maxDia = Math.ceil(maxDiaRaw / 50) * 50; // Ex.: 150 -> 200 (ou 150)
+      const scaleDiaMax = maxDia <= 150 ? Math.max(50, Math.ceil((maxDiaRaw * 1.15) / 50) * 50) : Math.ceil((maxDiaRaw * 1.15) / 50) * 50;
+
+      const maxAcumRaw = Math.max(50, serie[serie.length - 1].acumulado);
+      const stepAcum = maxAcumRaw <= 200 ? 50 : maxAcumRaw <= 500 ? 100 : maxAcumRaw <= 1000 ? 250 : 400;
+      const scaleAcumMax = Math.ceil((maxAcumRaw * 1.12) / stepAcum) * stepAcum;
+
+      const n = serie.length;
+      const stepX = plotW / Math.max(1, n);
+      const barW = Math.max(4, Math.min(14, stepX * 0.58));
+
+      const yDia = (val) => padT + plotH - (Math.min(val, scaleDiaMax) / scaleDiaMax) * plotH;
+      const yAcum = (val) => padT + plotH - (Math.min(val, scaleAcumMax) / scaleAcumMax) * plotH;
+      const xPos = (i) => padL + i * stepX + stepX / 2;
+
+      // 4 divisões horizontais (0%, 25%, 50%, 75%, 100%)
+      const ticks = [0, 0.25, 0.5, 0.75, 1];
+      const gridLines = ticks
+        .map((t) => {
+          const y = padT + plotH * (1 - t);
+          const vDia = Math.round(scaleDiaMax * t);
+          const vAcum = Math.round(scaleAcumMax * t);
+          return `
+            <line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"
+              stroke="${t === 0 ? '#cbd5e1' : '#e2e8f0'}" stroke-width="${t === 0 ? '1.5' : '1'}"
+              ${t > 0 ? 'stroke-dasharray="5,5"' : ''} />
+            <text x="${padL - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" font-weight="800" fill="#0369a1">${vDia}</text>
+            <text x="${W - padR + 10}" y="${(y + 4).toFixed(1)}" text-anchor="start" font-size="11.5" font-weight="800" fill="#14532d">${vAcum}</text>
+          `;
+        })
+        .join('');
+
+      // Linha tracejada âmbar: Média por dia chuvoso
+      const mediaChuv = resumo.mediaNosDiasChuvosos || 0;
+      const yMedia = yDia(mediaChuv);
+      const linhaMedia =
+        mediaChuv > 0
+          ? `
+          <line x1="${padL}" y1="${yMedia.toFixed(1)}" x2="${W - padR}" y2="${yMedia.toFixed(1)}"
+            stroke="#d97706" stroke-width="1.4" stroke-dasharray="6,5" />
+          <text x="${padL + 14}" y="${Math.max(padT + 14, yMedia - 6).toFixed(1)}"
+            font-size="11.5" font-weight="800" fill="#b45309">
+            Média por dia chuvoso: ${mediaChuv.toFixed(1)} mm
+          </text>
+        `
+          : '';
+
+      // Polígono de área sombreada e caminho da linha acumulada
+      const pts = serie.map((d, i) => `${xPos(i).toFixed(1)},${yAcum(d.acumulado).toFixed(1)}`);
+      const areaPoints = `${xPos(0).toFixed(1)},${(padT + plotH).toFixed(1)} ${pts.join(' ')} ${xPos(n - 1).toFixed(1)},${(padT + plotH).toFixed(1)}`;
+      const polylinePoints = pts.join(' ');
+
+      // Colunas de chuva diária
+      const colunasSvg = serie
+        .map((d, i) => {
+          const cx = xPos(i);
+          const bx = cx - barW / 2;
+          const hBar = d.mm > 0 ? Math.max(4, ((d.mm / scaleDiaMax) * plotH)) : 2.5;
+          const by = padT + plotH - hBar;
+          const rx = Math.min(4, barW / 2);
+          const dataBR = core.formatDateBR(d.data);
+          return `
+            <g style="cursor:pointer;" onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
+              <title>${dataBR} — Chuva do dia: ${d.mm.toFixed(1)} mm | Acumulado: ${d.acumulado.toFixed(1)} mm (${d.responsavel})</title>
+              <rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${barW.toFixed(1)}" height="${hBar.toFixed(1)}"
+                rx="${rx.toFixed(1)}" fill="${d.mm > 0 ? 'url(#barBlueGrad)' : '#94a3b8'}" opacity="${d.mm > 0 ? '0.95' : '0.55'}" />
+            </g>
+          `;
+        })
+        .join('');
+
+      // Marcadores circulares na linha de acumulado
+      const mostrarTodosPontos = n <= 95;
+      const pontosSvg = serie
+        .map((d, i) => {
+          if (!mostrarTodosPontos && i % 2 !== 0 && i !== n - 1 && d.mm === 0) return '';
+          const cx = xPos(i);
+          const cy = yAcum(d.acumulado);
+          const dataBR = core.formatDateBR(d.data);
+          return `
+            <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.2"
+              fill="#ffffff" stroke="#14532d" stroke-width="2.6" style="cursor:pointer;"
+              onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
+              <title>${dataBR} — Acumulado progressivo: ${d.acumulado.toFixed(1)} mm (Chuva no dia: ${d.mm.toFixed(1)} mm)</title>
+            </circle>
+          `;
+        })
+        .join('');
+
+      // Rótulos do eixo X (aprox. 7 a 8 datas distribuídas uniformemente)
+      const qtdLabels = Math.min(n, 7);
+      const labelsX = [];
+      for (let k = 0; k < qtdLabels; k++) {
+        const idx = qtdLabels === 1 ? 0 : Math.round((k * (n - 1)) / (qtdLabels - 1));
+        const d = serie[idx];
+        const cx = xPos(idx);
+        const label = f.ano === 'todos' ? `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}/${d.data.slice(2, 4)}` : `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}`;
+        labelsX.push(
+          `<text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#64748b">${label}</text>`
+        );
+      }
+
+      return `
+        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:580px; height:auto; display:block; background:linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border-radius:12px;">
+            <defs>
+              <linearGradient id="barBlueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0284c7" />
+                <stop offset="100%" stop-color="#0369a1" />
+              </linearGradient>
+              <linearGradient id="acumAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#15803d" stop-opacity="0.22" />
+                <stop offset="100%" stop-color="#15803d" stop-opacity="0.02" />
+              </linearGradient>
+            </defs>
+
+            <!-- Títulos dos Eixos Y (Esquerda: Chuva Diária | Direita: Acumulado) -->
+            <text x="${padL}" y="22" text-anchor="start" font-size="12" font-weight="800" letter-spacing="0.04em" fill="#0369a1">
+              CHUVA DIÁRIA (mm)
+            </text>
+            <text x="${W - padR}" y="22" text-anchor="end" font-size="12" font-weight="800" letter-spacing="0.04em" fill="#14532d">
+              ACUMULADO (mm)
+            </text>
+
+            ${gridLines}
+            ${linhaMedia}
+
+            <!-- Área sombreada sob a curva de acumulado -->
+            <polygon points="${areaPoints}" fill="url(#acumAreaGrad)" />
+
+            <!-- Colunas de Chuva Diária -->
+            ${colunasSvg}
+
+            <!-- Linha contínua de Soma Progressiva (Acumulado) -->
+            <polyline fill="none" stroke="#14532d" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"
+              points="${polylinePoints}" />
+
+            <!-- Pontos circulares da curva de acumulado -->
+            ${pontosSvg}
+
+            <!-- Datas do eixo X -->
+            ${labelsX.join('')}
+          </svg>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-top:0.65rem; font-size:0.78rem; color:var(--slate-600);">
+          <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:12px; height:12px; border-radius:3px; background:#0284c7; display:inline-block;"></span> <strong>Colunas Azuis:</strong> Chuva diária (mm)</span>
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:14px; height:3px; background:#14532d; display:inline-block;"></span> <strong>Linha Verde:</strong> Soma progressiva acumulada (${resumo.acumuladoMm.toFixed(1)} mm)</span>
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:14px; height:2px; border-top:2px dashed #d97706; display:inline-block;"></span> <strong>Tracejado Âmbar:</strong> Média por dia chuvoso (${mediaChuv.toFixed(1)} mm)</span>
+          </div>
+          <span>💡 Toque em qualquer ponto ou coluna para abrir o laudo da leitura</span>
+        </div>
+      `;
+    }
+
+    // ========================================================================
+    // MODO 2: GRÁFICO DE LINHA ANALÍTICO (Precipitação Diária + Média Móvel 7d + Limiares)
+    // ========================================================================
+    if (modo === 'linha') {
+      if (serie.length === 0) {
+        return `<p style="padding:1rem; color:var(--slate-500);">Nenhum registro para o filtro selecionado.</p>`;
+      }
+
+      const W = 980;
+      const H = 370;
+      const padL = 58;
+      const padR = 45;
+      const padT = 38;
+      const padB = 48;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      const maxDiaRaw = Math.max(25, ...serie.map((d) => d.mm));
+      const scaleMax = Math.ceil((maxDiaRaw * 1.15) / 25) * 25;
+      const n = serie.length;
+      const stepX = plotW / Math.max(1, n - 1);
+      const xPos = (i) => (n === 1 ? padL + plotW / 2 : padL + i * stepX);
+      const yVal = (val) => padT + plotH - (Math.min(val, scaleMax) / scaleMax) * plotH;
+
+      const ticks = [0, 0.25, 0.5, 0.75, 1];
+      const gridLines = ticks
+        .map((t) => {
+          const y = padT + plotH * (1 - t);
+          const v = Math.round(scaleMax * t);
+          return `
+            <line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"
+              stroke="${t === 0 ? '#cbd5e1' : '#e2e8f0'}" stroke-width="${t === 0 ? '1.5' : '1'}"
+              ${t > 0 ? 'stroke-dasharray="5,5"' : ''} />
+            <text x="${padL - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" font-weight="800" fill="#0369a1">${v} mm</text>
+          `;
+        })
+        .join('');
+
+      // Limiares agronômicos: 5 mm (Chuva útil) e 50 mm (Risco de escoamento superficial)
+      const y5 = yVal(5);
+      const y50 = scaleMax >= 50 ? yVal(50) : null;
+
+      const ptsDiario = serie.map((d, i) => `${xPos(i).toFixed(1)},${yVal(d.mm).toFixed(1)}`);
+      const ptsMedia7 = serie.map((d, i) => `${xPos(i).toFixed(1)},${yVal(d.mediaMovel7).toFixed(1)}`);
+      const areaDiario = `${xPos(0).toFixed(1)},${(padT + plotH).toFixed(1)} ${ptsDiario.join(' ')} ${xPos(n - 1).toFixed(1)},${(padT + plotH).toFixed(1)}`;
+
+      const pontosInterativos = serie
+        .map((d, i) => {
+          const cx = xPos(i);
+          const cy = yVal(d.mm);
+          const isPico = resumo.maiorChuva && d.id === resumo.maiorChuva.id && d.mm > 0;
+          const cor = d.mm >= 50 ? '#dc2626' : d.mm >= 5 ? '#0284c7' : '#94a3b8';
+          return `
+            <g style="cursor:pointer;" onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
+              <title>${core.formatDateBR(d.data)} — Chuva: ${d.mm.toFixed(1)} mm | Média móvel (7 leituras): ${d.mediaMovel7.toFixed(1)} mm</title>
+              <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${isPico ? '6' : d.mm > 0 ? '4' : '2.5'}"
+                fill="${isPico ? '#dc2626' : '#ffffff'}" stroke="${cor}" stroke-width="2.4" />
+              ${
+                isPico
+                  ? `<text x="${cx.toFixed(1)}" y="${Math.max(16, cy - 10).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#dc2626">Pico: ${d.mm.toFixed(1)} mm (${d.data.slice(8, 10)}/${d.data.slice(5, 7)})</text>`
+                  : ''
+              }
+            </g>
+          `;
+        })
+        .join('');
+
+      const qtdLabels = Math.min(n, 7);
+      const labelsX = [];
+      for (let k = 0; k < qtdLabels; k++) {
+        const idx = qtdLabels === 1 ? 0 : Math.round((k * (n - 1)) / (qtdLabels - 1));
+        const d = serie[idx];
+        const cx = xPos(idx);
+        labelsX.push(
+          `<text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#64748b">${d.data.slice(8, 10)}/${d.data.slice(5, 7)}</text>`
+        );
+      }
+
+      return `
+        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:580px; height:auto; display:block; background:linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border-radius:12px;">
+            <defs>
+              <linearGradient id="lineBlueArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="#0284c7" stop-opacity="0.01" />
+              </linearGradient>
+            </defs>
+
+            <text x="${padL}" y="22" text-anchor="start" font-size="12" font-weight="800" fill="#0369a1">
+              CURVA DE PRECIPITAÇÃO DIÁRIA E TENDÊNCIA HÍDRICA (mm)
+            </text>
+
+            ${gridLines}
+
+            <!-- Limiar de Chuva Útil (5 mm) -->
+            <line x1="${padL}" y1="${y5.toFixed(1)}" x2="${W - padR}" y2="${y5.toFixed(1)}"
+              stroke="#16a34a" stroke-width="1.3" stroke-dasharray="4,4" />
+            <text x="${W - padR - 6}" y="${(y5 - 5).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="700" fill="#15803d">
+              Limiar Chuva Útil (5 mm)
+            </text>
+
+            ${
+              y50 !== null
+                ? `
+              <line x1="${padL}" y1="${y50.toFixed(1)}" x2="${W - padR}" y2="${y50.toFixed(1)}"
+                stroke="#dc2626" stroke-width="1.3" stroke-dasharray="6,4" />
+              <text x="${W - padR - 6}" y="${(y50 - 5).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="700" fill="#dc2626">
+                Alerta de Escoamento / Erosão (50 mm)
+              </text>
+            `
+                : ''
+            }
+
+            <!-- Área e Linha de Precipitação Diária -->
+            <polygon points="${areaDiario}" fill="url(#lineBlueArea)" />
+            <polyline fill="none" stroke="#0284c7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"
+              points="${ptsDiario.join(' ')}" />
+
+            <!-- Linha de Média Móvel (7 leituras) -->
+            <polyline fill="none" stroke="#166534" stroke-width="3" stroke-dasharray="8,4" stroke-linecap="round" stroke-linejoin="round"
+              points="${ptsMedia7.join(' ')}" />
+
+            ${pontosInterativos}
+            ${labelsX.join('')}
+          </svg>
+        </div>
+
+        <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.65rem; font-size:0.78rem; color:var(--slate-600);">
+          <span>🔵 <strong>Linha Contínua Azul:</strong> Precipitação diária (mm)</span>
+          <span>🟢 <strong>Linha Tracejada Verde:</strong> Média Móvel (7 leituras — tendência de umidade)</span>
+          <span>🌱 <strong>Limiar 5 mm:</strong> Chuva útil p/ ativação de adubação e infiltração radicular</span>
+          <span>⚠️ <strong>Limiar 50 mm:</strong> Alerta de escoamento superficial e erosão</span>
+        </div>
+      `;
+    }
+
+    // ========================================================================
+    // MODO 3: MENSAL CONSOLIDADO (Colunas + Linha de Evolução Mensal)
+    // ========================================================================
     if (modo === 'mensal') {
       if (resumo.serieMensal.length === 0) {
         return `<p style="padding:1rem; color:var(--slate-500);">Nenhum registro para o filtro selecionado.</p>`;
       }
-      const maxVal = Math.max(10, ...resumo.serieMensal.map((m) => m.totalMm));
+      const maxVal = Math.max(20, ...resumo.serieMensal.map((m) => m.totalMm));
       return `
         <div class="chart-bars-wrap">
           ${resumo.serieMensal
@@ -858,8 +1260,8 @@ const AmadeusViews = {
               const hPct = Math.max(4, Math.round((m.totalMm / maxVal) * 100));
               return `
                 <div class="chart-bar-col" onclick="AmadeusViews.inspecionarMesChuva('${m.anoMes}')"
-                  title="Clique para ver detalhes de ${m.anoMes}: ${m.totalMm.toFixed(1)} mm (${m.diasRegistrados} leituras)">
-                  <div class="chart-bar-val">${m.totalMm.toFixed(1)}</div>
+                  title="Clique para ver detalhes de ${m.anoMes}: ${m.totalMm.toFixed(1)} mm (${m.diasChuvosos} dias chuvosos de ${m.diasRegistrados} leituras)">
+                  <div class="chart-bar-val">${m.totalMm.toFixed(1)} mm</div>
                   <div class="chart-bar-fill ${m.totalMm === 0 ? 'zero-rain' : ''}" style="height:${hPct}%;"></div>
                   <div class="chart-bar-label">${m.anoMes}</div>
                 </div>
@@ -870,36 +1272,9 @@ const AmadeusViews = {
       `;
     }
 
-    if (modo === 'diario') {
-      const recorte = registros.slice(-45);
-      if (recorte.length === 0) {
-        return `<p style="padding:1rem; color:var(--slate-500);">Nenhum registro diário para exibir.</p>`;
-      }
-      const maxDia = Math.max(10, ...recorte.map((r) => Number(r.mm) || 0));
-      return `
-        <div style="font-size:0.78rem; color:var(--slate-500); margin-bottom:0.35rem;">
-          Exibindo ${recorte.length} leituras diárias (clique em qualquer barra/ponto para abrir os detalhes do dia):
-        </div>
-        <div class="chart-bars-wrap">
-          ${recorte
-            .map((r) => {
-              const mm = Number(r.mm) || 0;
-              const hPct = mm === 0 ? 4 : Math.max(8, Math.round((mm / maxDia) * 100));
-              const labelCurta = r.data.slice(8, 10) + '/' + r.data.slice(5, 7);
-              return `
-                <div class="chart-bar-col" onclick="AmadeusViews.inspecionarDiaChuva('${r.id}')"
-                  title="${core.formatDateBR(r.data)}: ${mm} mm (${r.responsavel})">
-                  <div class="chart-bar-val">${mm}</div>
-                  <div class="chart-bar-fill ${mm === 0 ? 'zero-rain' : ''}" style="height:${hPct}%;"></div>
-                  <div class="chart-bar-label">${labelCurta}</div>
-                </div>
-              `;
-            })
-            .join('')}
-        </div>
-      `;
-    }
-
+    // ========================================================================
+    // MODO 4: COMPARATIVO 2025 × 2026
+    // ========================================================================
     if (modo === 'comparativo') {
       const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       const todos = core.db.chuvas;
@@ -919,9 +1294,9 @@ const AmadeusViews = {
       const maxComp = Math.max(20, ...comp.map((c) => Math.max(c.mm25, c.mm26)));
 
       return `
-        <div style="display:flex; gap:1rem; font-size:0.8rem; margin-bottom:0.5rem;">
-          <span>🟦 <strong>2025</strong> (Maio–Dezembro, com lacuna Jan–Abr)</span>
-          <span>🟩 <strong>2026</strong> (Janeiro–Agosto)</span>
+        <div style="display:flex; gap:1rem; font-size:0.8rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+          <span>🟦 <strong>2025</strong> (Maio–Dezembro: 635,5 mm)</span>
+          <span>🟩 <strong>2026</strong> (Janeiro–Agosto: 705,0 mm)</span>
         </div>
         <div class="chart-bars-wrap">
           ${comp
@@ -985,12 +1360,12 @@ const AmadeusViews = {
 
   limparFiltrosPluv() {
     window.AmadeusCore.pluvFilters = {
-      ano: 'todos',
+      ano: '2026',
       mes: 'todos',
       pluviometro: 'todos',
       ultimos7Dias: false,
       busca: '',
-      modoGrafico: 'mensal'
+      modoGrafico: 'combo'
     };
     this.renderMainContent();
   },
