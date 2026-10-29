@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amadeus-pwa-v4';
+const CACHE_NAME = 'amadeus-pwa-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -38,23 +38,19 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('/api/')) return;
+  if (event.request.url.includes('/api/') || event.request.url.includes('firebaseio.com') || event.request.url.includes('googleapis.com')) return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
