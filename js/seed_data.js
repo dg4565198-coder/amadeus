@@ -254,6 +254,7 @@ function getInitialDatabase() {
         email: 'guilherme@amadeus.rural',
         senhaHash: 'admin123',
         perfil: 'admin',
+        statusAcesso: 'aprovado',
         cargo: 'Administrador Geral / Responsável Técnico',
         ativo: true,
         permissoes: ['tudo', 'exportar', 'admin', 'portal', 'backup']
@@ -265,6 +266,7 @@ function getInitialDatabase() {
         email: 'charles.leonel@ifbaiano.edu.br',
         senhaHash: 'charles123',
         perfil: 'admin',
+        statusAcesso: 'aprovado',
         cargo: 'Docente e Coordenador de Pesquisa',
         ativo: true,
         permissoes: ['tudo', 'exportar', 'admin', 'portal']
@@ -275,8 +277,9 @@ function getInitialDatabase() {
         login: 'zeca',
         email: 'zeca@amadeus.rural',
         senhaHash: 'zeca123',
-        perfil: 'comum',
-        cargo: 'Operador de Campo e Monitoramento',
+        perfil: 'colaborador',
+        statusAcesso: 'aprovado',
+        cargo: 'Colaborador de Campo e Monitoramento',
         ativo: true,
         permissoes: ['consultar', 'registrar', 'exportar']
       },
@@ -286,10 +289,23 @@ function getInitialDatabase() {
         login: 'alisson',
         email: 'alisson@amadeus.rural',
         senhaHash: 'alisson123',
-        perfil: 'comum',
+        perfil: 'colaborador',
+        statusAcesso: 'aprovado',
         cargo: 'Colaborador de Manejo Rural',
         ativo: true,
         permissoes: ['consultar', 'registrar', 'exportar']
+      },
+      {
+        id: 'usr-leitor-1',
+        nome: 'Visitante / Consulta Técnica',
+        login: 'leitor',
+        email: 'leitor@amadeus.rural',
+        senhaHash: 'leitor123',
+        perfil: 'leitor',
+        statusAcesso: 'aprovado',
+        cargo: 'Leitor / Consulta de Relatórios',
+        ativo: true,
+        permissoes: ['consultar', 'exportar']
       }
     ],
     pessoas: [
