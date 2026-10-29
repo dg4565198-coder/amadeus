@@ -442,6 +442,9 @@ const AmadeusViews = {
         break;
       case 'sipa':
         el.innerHTML = this.viewSipa();
+        if ((this.sipaSubTab || 'mapa') === 'mapa') {
+          setTimeout(() => this.inicializarMapaSipa(), 80);
+        }
         break;
       case 'pluviometria':
         el.innerHTML = this.viewPluviometria();
@@ -4824,11 +4827,14 @@ const AmadeusViews = {
   // ==========================================================================
   // MÓDULO SIPA — Sistema de Plantio Direto (SPD) & Integração no Campus
   // ==========================================================================
-  sipaSubTab: 'plantios', // 'plantios' | 'avaliacoes' | 'ferramentas'
+  sipaSubTab: 'mapa', // 'mapa' | 'plantios' | 'avaliacoes' | 'ferramentas'
 
   setSipaSubTab(aba) {
     this.sipaSubTab = aba;
     this.renderMainContent();
+    if (aba === 'mapa') {
+      setTimeout(() => this.inicializarMapaSipa(), 80);
+    }
   },
 
   viewSipa() {
@@ -4838,7 +4844,7 @@ const AmadeusViews = {
     const sipa = core.db.sipa || { plantios: [], avaliacoes: [], registrosCampo: [] };
     const plantios = sipa.plantios || [];
     const avaliacoes = sipa.avaliacoes || [];
-    const sub = this.sipaSubTab || 'plantios';
+    const sub = this.sipaSubTab || 'mapa';
 
     const areaTotalHa = plantios.reduce((s, p) => s + (Number(p.areaHa) || 0), 0);
     const mediaPalhada =
@@ -4910,6 +4916,10 @@ const AmadeusViews = {
 
       <!-- Sub-navegação Interna do Módulo SIPA -->
       <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:1.15rem; background:#ffffff; padding:0.5rem; border-radius:12px; border:1px solid var(--slate-200);">
+        <button class="btn btn-sm ${sub === 'mapa' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setSipaSubTab('mapa')">
+          🗺️ Mapa &amp; Área no Campus (Satélite / Fotos)
+        </button>
         <button class="btn btn-sm ${sub === 'plantios' ? 'btn-primary' : 'btn-secondary'}"
           onclick="AmadeusViews.setSipaSubTab('plantios')">
           🌾 Plantios, Culturas &amp; Glebas (${plantios.length})
@@ -4925,7 +4935,9 @@ const AmadeusViews = {
       </div>
 
       ${
-        sub === 'plantios'
+        sub === 'mapa'
+          ? this.renderSubTabMapaAreaSipa()
+          : sub === 'plantios'
           ? `
         <div class="card">
           <div class="card-header">
@@ -5139,6 +5151,934 @@ const AmadeusViews = {
       `
       }
     `;
+  },
+
+  renderSubTabMapaAreaSipa() {
+    const core = window.AmadeusCore;
+    const canCreate = core.canCreate();
+    const isAdmin = core.isAdmin();
+    const mapaArea = core.db.sipa?.mapaArea || {
+      nomeArea: 'Área Experimental SIPA & Plantio Direto · Campus IF Baiano',
+      descricao: 'Gleba destinada ao projeto de Sistema de Plantio Direto (SPD) e consórcios forrageiros (Milho + Brachiaria / Integração Lavoura-Pecuária).',
+      lat: -14.2885,
+      lng: -39.8142,
+      zoom: 17,
+      areaHa: 1.5,
+      perimetroM: 520,
+      linkGoogleMaps: 'https://maps.google.com/?q=-14.2885,-39.8142',
+      linkGoogleEarth: 'https://earth.google.com/web/search/-14.2885,-39.8142',
+      imagensCroqui: [],
+      pontosMarcados: []
+    };
+
+    const imagens = mapaArea.imagensCroqui || [];
+    const filtro = this._sipaGaleriaFiltro || 'todos';
+    const imagensFiltradas =
+      filtro === 'todos'
+        ? imagens
+        : imagens.filter((img) => (img.categoria || '').toLowerCase().includes(filtro.toLowerCase()));
+
+    const pontos = mapaArea.pontosMarcados || [];
+
+    return `
+      <!-- Barra Superior de Ações do Módulo de Mapa / Área -->
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+          <div>
+            <div style="font-size:0.78rem; font-weight:800; color:var(--green-700); text-transform:uppercase; letter-spacing:0.05em;">
+              📍 Georreferenciamento &amp; Reconhecimento Espacial no Campus
+            </div>
+            <h3 style="font-size:1.18rem; font-weight:800; margin:0.15rem 0 0.25rem 0; color:var(--slate-900);">
+              ${mapaArea.nomeArea}
+            </h3>
+            <p style="font-size:0.84rem; color:var(--slate-600); margin:0;">
+              ${mapaArea.descricao || 'Área experimental destinada ao Sistema de Plantio Direto e ILP no Campus IF Baiano.'}
+            </p>
+          </div>
+          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+            <a href="${mapaArea.linkGoogleMaps}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:0.35rem; text-decoration:none;">
+              🌍 Abrir no Google Maps
+            </a>
+            <a href="${mapaArea.linkGoogleEarth}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" style="display:inline-flex; align-items:center; gap:0.35rem; text-decoration:none;">
+              🛰️ Abrir no Google Earth
+            </a>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.capturarGpsAreaSipa()" title="Capturar coordenadas atuais pelo GPS do aparelho">
+              📍 Capturar GPS pelo Aparelho
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.copiarCoordenadasAreaSipa()" title="Copiar coordenadas e link para compartilhar no WhatsApp">
+              📋 Compartilhar Link &amp; GPS
+            </button>
+            ${
+              canCreate
+                ? `
+              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalImagemAreaSipa()">
+                📸 Adicionar Foto / Croqui
+              </button>
+              <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalEditarAreaSipa()">
+                ✏️ Editar Dados da Área
+              </button>
+            `
+                : ''
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- MAPA INTERATIVO SATÉLITE LEAFLET -->
+      <div class="sipa-map-wrapper">
+        <div class="sipa-map-toolbar">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:1.2rem;">🛰️</span>
+            <div>
+              <strong style="font-size:0.92rem;">Mapeamento por Satélite em Alta Resolução (Campus IF Baiano)</strong>
+              <div style="font-size:0.75rem; color:var(--slate-500);">
+                Alterne entre Imagem de Satélite Esri HD e Terreno/Ruas no menu superior direito do mapa
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.recentralizarMapaSipa()" title="Recentralizar mapa na gleba">
+              🎯 Centralizar Área
+            </button>
+            ${
+              canCreate
+                ? `
+              <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPontoMapaSipa()" title="Marcar novo ponto GPS no mapa">
+                📌 Adicionar Ponto / Marco
+              </button>
+            `
+                : ''
+            }
+          </div>
+        </div>
+
+        <div id="sipa-mapa-leaf" class="sipa-map-container"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; padding:0.6rem 1rem; background:var(--slate-50); border-top:1px solid var(--slate-200); font-size:0.78rem; color:var(--slate-600);">
+          <div>
+            📍 <strong>Coordenadas Centrais:</strong> Lat <code>${mapaArea.lat.toFixed(6)}</code> | Lng <code>${mapaArea.lng.toFixed(6)}</code>
+          </div>
+          <div>
+            📐 <strong>Área Total:</strong> ${Number(mapaArea.areaHa || 1.5).toFixed(2)} ha (${Math.round((mapaArea.areaHa || 1.5) * 10000).toLocaleString('pt-BR')} m²) &nbsp;|&nbsp; 
+            📏 <strong>Perímetro:</strong> ~${mapaArea.perimetroM || 520} m
+          </div>
+          <div>
+            📌 <strong>Pontos Mapeados:</strong> ${pontos.length} ponto(s) de interesse
+          </div>
+        </div>
+      </div>
+
+      <!-- Ficha Técnica Agronômica em 3 Colunas -->
+      <div class="responsive-grid-2" style="grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); margin-bottom:1.25rem;">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header">
+            <div class="card-title">📍 Coordenadas &amp; Acesso Geoespacial</div>
+          </div>
+          <div style="font-size:0.84rem; line-height:1.6; color:var(--slate-700);">
+            • <strong>Campus / Município:</strong> IF Baiano — Setor de Agricultura<br/>
+            • <strong>Latitude:</strong> ${mapaArea.lat.toFixed(6)}° S<br/>
+            • <strong>Longitude:</strong> ${mapaArea.lng.toFixed(6)}° W<br/>
+            • <strong>Dimensão:</strong> ${Number(mapaArea.areaHa || 1.5).toFixed(2)} hectares (15.000 m²)<br/>
+            • <strong>Perímetro da Gleba:</strong> ~${mapaArea.perimetroM || 520} metros lineares<br/>
+            <div style="margin-top:0.65rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <a href="${mapaArea.linkGoogleMaps}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">Google Maps ↗</a>
+              <a href="${mapaArea.linkGoogleEarth}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">Google Earth 3D ↗</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header">
+            <div class="card-title">🌱 Sistema de Manejo &amp; Solo</div>
+          </div>
+          <div style="font-size:0.84rem; line-height:1.6; color:var(--slate-700);">
+            • <strong>Sistema:</strong> Sistema de Plantio Direto (SPD) na Palhada<br/>
+            • <strong>Consórcio Primário:</strong> Milho Grão + Brachiaria ruziziensis<br/>
+            • <strong>Manejo Integrado:</strong> Integração Lavoura-Pecuária (ILP)<br/>
+            • <strong>Solo:</strong> Latossolo Vermelho-Amarelo (relevo suave-ondulado)<br/>
+            • <strong>Objetivo:</strong> Cobertura permanente, ciclagem de nutrientes e retenção de água<br/>
+            • <strong>Meta de Palhada:</strong> &ge; 6,0 toneladas de matéria seca por hectare
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header">
+            <div class="card-title">📌 Pontos de Interesse &amp; Equipamentos</div>
+          </div>
+          <div style="font-size:0.84rem; line-height:1.5;">
+            ${
+              pontos.length === 0
+                ? `<p style="color:var(--slate-500);">Nenhum ponto marcado ainda.</p>`
+                : pontos
+                    .map(
+                      (pt) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--slate-100);">
+                  <div>
+                    <strong>${pt.tipo === 'pluviometro' ? '🌧️' : pt.tipo === 'pastejo' ? '🐂' : '🌾'} ${pt.rotulo}</strong><br/>
+                    <small style="color:var(--slate-500);">${pt.obs || ''} (${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)})</small>
+                  </div>
+                  ${
+                    isAdmin
+                      ? `
+                    <button class="btn btn-sm btn-danger" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="AmadeusViews.excluirPontoMapaSipa('${pt.id}')" title="Excluir ponto">🗑️</button>
+                  `
+                      : ''
+                  }
+                </div>
+              `
+                    )
+                    .join('')
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- GALERIA DE CROQUIS E FOTOS DA ÁREA -->
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:0.6rem;">
+          <div>
+            <div class="card-title">📸 Imagens, Croquis Técnicos &amp; Fotos da Área Experimental</div>
+            <div style="font-size:0.8rem; color:var(--slate-500);">
+              Croquis de zoneamento dos talhões, fotos aéreas de drone, evolução da palhada e fotos de campo antes e depois do plantio
+            </div>
+          </div>
+          <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+            <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+              <button class="btn btn-sm ${filtro === 'todos' ? 'btn-primary' : 'btn-secondary'}" onclick="AmadeusViews.filtrarGaleriaSipa('todos')">Todas (${imagens.length})</button>
+              <button class="btn btn-sm ${filtro === 'croqui' ? 'btn-primary' : 'btn-secondary'}" onclick="AmadeusViews.filtrarGaleriaSipa('croqui')">📐 Croquis</button>
+              <button class="btn btn-sm ${filtro === 'campo' || filtro === 'foto' ? 'btn-primary' : 'btn-secondary'}" onclick="AmadeusViews.filtrarGaleriaSipa('campo')">📸 Fotos do Campo</button>
+              <button class="btn btn-sm ${filtro === 'drone' ? 'btn-primary' : 'btn-secondary'}" onclick="AmadeusViews.filtrarGaleriaSipa('drone')">🛰️ Fotos de Drone</button>
+            </div>
+            ${
+              canCreate
+                ? `
+              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalImagemAreaSipa()">
+                ➕ Adicionar Foto / Croqui
+              </button>
+            `
+                : ''
+            }
+          </div>
+        </div>
+
+        ${
+          imagensFiltradas.length === 0
+            ? `
+          <div style="text-align:center; padding:2.5rem 1rem; color:var(--slate-500); background:var(--slate-50); border-radius:10px; border:1px dashed var(--slate-300);">
+            <div style="font-size:2rem; margin-bottom:0.4rem;">📷</div>
+            <h4 style="font-size:1rem; font-weight:700; color:var(--slate-700); margin-bottom:0.25rem;">Nenhuma imagem nesta categoria</h4>
+            <p style="font-size:0.84rem; max-width:480px; margin:0 auto 1rem auto;">
+              Você pode tirar fotos pelo celular durante o dia de campo no campus, carregar croquis desenhados ou fotos de drone para documentar o projeto SIPA.
+            </p>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalImagemAreaSipa()">📸 Adicionar Primeira Foto / Croqui</button>`
+                : ''
+            }
+          </div>
+        `
+            : `
+          <div class="sipa-gallery-grid">
+            ${imagensFiltradas
+              .map((img) => {
+                const tagCor = img.categoria?.toLowerCase().includes('croqui')
+                  ? '#166534'
+                  : img.categoria?.toLowerCase().includes('drone')
+                  ? '#7c3aed'
+                  : img.categoria?.toLowerCase().includes('antes')
+                  ? '#d97706'
+                  : '#0284c7';
+
+                return `
+                <div class="sipa-img-card">
+                  <div class="sipa-img-thumb-wrap" onclick="AmadeusViews.abrirModalVisualizarImagem('${img.id}')" title="Clique para ampliar">
+                    <img src="${img.url}" alt="${img.titulo}" class="sipa-img-thumb" loading="lazy" />
+                    <span class="sipa-img-tag" style="background:${tagCor};">
+                      ${img.categoria || 'Registro'}
+                    </span>
+                  </div>
+                  <div class="sipa-img-content">
+                    <div style="font-weight:700; font-size:0.92rem; color:var(--slate-900); margin-bottom:0.25rem; line-height:1.3;">
+                      ${img.titulo}
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--slate-500); margin-bottom:0.5rem;">
+                      📅 ${core.formatDateBR(img.data)} &nbsp;·&nbsp; 👤 ${img.autor || 'Equipe SIPA'}
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--slate-600); margin:0 0 0.75rem 0; line-height:1.4; flex:1;">
+                      ${img.descricao || 'Sem observações adicionais.'}
+                    </p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--slate-100); padding-top:0.6rem;">
+                      <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalVisualizarImagem('${img.id}')">
+                        🔍 Ampliar
+                      </button>
+                      <div style="display:flex; gap:0.25rem;">
+                        <a href="${img.url}" download="${(img.titulo || 'sipa-imagem').replace(/[^a-zA-Z0-9]/g, '_')}.png" class="btn btn-sm btn-secondary" title="Baixar imagem">
+                          ⬇️
+                        </a>
+                        ${
+                          isAdmin
+                            ? `
+                          <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirImagemAreaSipa('${img.id}')" title="Excluir imagem">
+                            🗑️
+                          </button>
+                        `
+                            : ''
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+              })
+              .join('')}
+          </div>
+        `
+        }
+      </div>
+    `;
+  },
+
+  inicializarMapaSipa() {
+    const container = document.getElementById('sipa-mapa-leaf');
+    if (!container) return;
+    if (typeof L === 'undefined') {
+      container.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--slate-500); padding:2rem; text-align:center;">
+          <div style="font-size:2rem; margin-bottom:0.5rem;">🛰️</div>
+          <div>Carregando recursos de satélite Leaflet...</div>
+        </div>
+      `;
+      return;
+    }
+
+    if (this._sipaLeafletMap) {
+      try {
+        this._sipaLeafletMap.remove();
+      } catch (err) {
+        console.warn('Erro ao resetar mapa:', err);
+      }
+      this._sipaLeafletMap = null;
+    }
+
+    const core = window.AmadeusCore;
+    const mapaArea = core.db.sipa?.mapaArea || {
+      lat: -14.2885,
+      lng: -39.8142,
+      zoom: 17,
+      nomeArea: 'Área Experimental SIPA & Plantio Direto · Campus IF Baiano',
+      pontosMarcados: []
+    };
+
+    const map = L.map('sipa-mapa-leaf', {
+      center: [mapaArea.lat, mapaArea.lng],
+      zoom: mapaArea.zoom || 17,
+      zoomControl: true,
+      attributionControl: true
+    });
+    this._sipaLeafletMap = map;
+
+    // Satélite Esri World Imagery (HD Satellite tiles)
+    const sateliteEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics',
+      maxZoom: 19
+    });
+
+    // OpenStreetMap Standard
+    const mapaOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    });
+
+    sateliteEsri.addTo(map);
+
+    const baseLayers = {
+      "🛰️ Satélite Esri HD (Recomendado)": sateliteEsri,
+      "🗺️ Mapa Rodoviário / Ruas (OSM)": mapaOSM
+    };
+    L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+
+    // Custom Icon Generator
+    const criarIcone = (emoji, bg) => L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `<div style="background:${bg}; color:#ffffff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 3px 8px rgba(0,0,0,0.35); border:2.5px solid #ffffff;">${emoji}</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -20]
+    });
+
+    // Marcador Central da Gleba Experimental
+    const markerSede = L.marker([mapaArea.lat, mapaArea.lng], {
+      icon: criarIcone('🌱', '#166534')
+    }).addTo(map);
+
+    markerSede.bindPopup(`
+      <div style="font-size:0.86rem; line-height:1.45; min-width:210px;">
+        <strong style="color:#14532d; font-size:0.95rem;">🌱 ${mapaArea.nomeArea}</strong><br/>
+        <span style="font-size:0.8rem; color:#475569;">${mapaArea.descricao || 'Área destinada ao Sistema de Plantio Direto e ILP'}</span>
+        <hr style="margin:0.4rem 0; border:0; border-top:1px solid #e2e8f0;"/>
+        📐 <strong>Área:</strong> ${mapaArea.areaHa || 1.5} ha (${mapaArea.perimetroM || 520} m perímetro)<br/>
+        📍 <strong>GPS:</strong> ${mapaArea.lat.toFixed(6)}, ${mapaArea.lng.toFixed(6)}<br/>
+        <div style="margin-top:0.45rem;">
+          <a href="${mapaArea.linkGoogleMaps}" target="_blank" rel="noopener noreferrer" style="color:#0284c7; font-weight:700; text-decoration:none;">
+            🌍 Abrir no Google Maps &rarr;
+          </a>
+        </div>
+      </div>
+    `).openPopup();
+
+    // Raio visual circular aproximado da gleba experimental (70 metros de raio ~ 1.5 ha)
+    L.circle([mapaArea.lat, mapaArea.lng], {
+      color: '#16a34a',
+      fillColor: '#22c55e',
+      fillOpacity: 0.16,
+      weight: 2.5,
+      dashArray: '6, 6',
+      radius: 68
+    }).addTo(map);
+
+    // Marcadores adicionais (Pluviômetro, Piquetes, etc.)
+    if (Array.isArray(mapaArea.pontosMarcados)) {
+      mapaArea.pontosMarcados.forEach((pt) => {
+        let emoji = '📌';
+        let bg = '#0284c7';
+        if (pt.tipo === 'pluviometro') { emoji = '🌧️'; bg = '#2563eb'; }
+        else if (pt.tipo === 'pastejo') { emoji = '🐂'; bg = '#d97706'; }
+        else if (pt.tipo === 'talhao') { emoji = '🌾'; bg = '#15803d'; }
+
+        const m = L.marker([pt.lat, pt.lng], { icon: criarIcone(emoji, bg) }).addTo(map);
+        m.bindPopup(`
+          <div style="font-size:0.84rem; line-height:1.4;">
+            <strong style="font-size:0.9rem;">${emoji} ${pt.rotulo}</strong><br/>
+            <span>${pt.obs || ''}</span><br/>
+            <small style="color:#64748b;">GPS: ${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}</small>
+          </div>
+        `);
+      });
+    }
+
+    // Clique no mapa para capturar coordenadas
+    map.on('click', (e) => {
+      const lat = e.latlng.lat.toFixed(6);
+      const lng = e.latlng.lng.toFixed(6);
+      L.popup()
+        .setLatLng(e.latlng)
+        .setContent(`
+          <div style="font-size:0.82rem;">
+            <strong>📍 Ponto Clicado no Campus:</strong><br/>
+            Lat: <code>${lat}</code><br/>
+            Lng: <code>${lng}</code><br/>
+            <div style="margin-top:0.35rem;">
+              <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPontoMapaSipa(null, ${lat}, ${lng})">
+                📌 Salvar como Novo Marco
+              </button>
+            </div>
+          </div>
+        `)
+        .openOn(map);
+    });
+
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+  },
+
+  recentralizarMapaSipa() {
+    if (!this._sipaLeafletMap) {
+      this.inicializarMapaSipa();
+      return;
+    }
+    const core = window.AmadeusCore;
+    const mapaArea = core.db.sipa?.mapaArea || { lat: -14.2885, lng: -39.8142, zoom: 17 };
+    this._sipaLeafletMap.setView([mapaArea.lat, mapaArea.lng], mapaArea.zoom || 17);
+    this._sipaLeafletMap.invalidateSize();
+    core.toast('🎯 Mapa centralizado na Área Experimental SIPA.');
+  },
+
+  capturarGpsAreaSipa() {
+    const core = window.AmadeusCore;
+    if (!navigator.geolocation) {
+      core.toast('⚠️ Geolocalização não suportada neste navegador.', 'error');
+      return;
+    }
+
+    core.toast('🛰️ Obtendo coordenadas GPS do dispositivo...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(6));
+        const lng = parseFloat(pos.coords.longitude.toFixed(6));
+        const precisao = Math.round(pos.coords.accuracy || 0);
+
+        if (!core.db.sipa.mapaArea) {
+          core.db.sipa.mapaArea = {
+            nomeArea: 'Área Experimental SIPA & Plantio Direto · Campus IF Baiano',
+            lat: -14.2885,
+            lng: -39.8142,
+            areaHa: 1.5,
+            perimetroM: 520,
+            imagensCroqui: [],
+            pontosMarcados: []
+          };
+        }
+
+        core.db.sipa.mapaArea.lat = lat;
+        core.db.sipa.mapaArea.lng = lng;
+        core.db.sipa.mapaArea.linkGoogleMaps = `https://maps.google.com/?q=${lat},${lng}`;
+        core.db.sipa.mapaArea.linkGoogleEarth = `https://earth.google.com/web/search/${lat},${lng}`;
+
+        core.saveDatabase(`Atualizou GPS da Área Experimental SIPA: ${lat}, ${lng}`);
+        core.toast(`📍 GPS atualizado com sucesso! Precisão: ±${precisao}m`);
+
+        if (this._sipaLeafletMap) {
+          this._sipaLeafletMap.setView([lat, lng], 17);
+        }
+        this.renderMainContent();
+      },
+      (err) => {
+        let msg = 'Não foi possível capturar o GPS.';
+        if (err.code === 1) msg = 'Permissão de localização negada pelo usuário.';
+        else if (err.code === 2) msg = 'Sinal de GPS indisponível.';
+        else if (err.code === 3) msg = 'Tempo limite de busca do GPS esgotado.';
+        core.toast(`⚠️ ${msg}`, 'error');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  },
+
+  copiarCoordenadasAreaSipa() {
+    const core = window.AmadeusCore;
+    const m = core.db.sipa?.mapaArea || { lat: -14.2885, lng: -39.8142 };
+    const texto = `🌱 *AMADEUS — Área Experimental SIPA & Plantio Direto (Campus IF Baiano)*\n` +
+      `📍 Coordenadas: ${m.lat.toFixed(6)}, ${m.lng.toFixed(6)}\n` +
+      `📐 Dimensão: ${m.areaHa || 1.5} ha | Perímetro: ${m.perimetroM || 520} m\n` +
+      `🌍 Google Maps: ${m.linkGoogleMaps || `https://maps.google.com/?q=${m.lat},${m.lng}`}\n` +
+      `🛰️ Google Earth: ${m.linkGoogleEarth || `https://earth.google.com/web/search/${m.lat},${m.lng}`}\n` +
+      `🌾 Sistema: Plantio Direto na Palhada (Milho + Brachiaria / ILP)`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(() => {
+        core.toast('📋 Coordenadas e links copiados para a área de transferência!');
+      }).catch(() => {
+        prompt('Copie as coordenadas e links abaixo:', texto);
+      });
+    } else {
+      prompt('Copie as coordenadas e links abaixo:', texto);
+    }
+  },
+
+  filtrarGaleriaSipa(filtro) {
+    this._sipaGaleriaFiltro = filtro;
+    this.renderMainContent();
+  },
+
+  abrirModalVisualizarImagem(id) {
+    const core = window.AmadeusCore;
+    const lista = core.db.sipa?.mapaArea?.imagensCroqui || [];
+    const img = lista.find((x) => x.id === id);
+    if (!img) return;
+
+    this.abrirModalGenerico(
+      `🖼️ ${img.titulo}`,
+      `
+        <div style="text-align:center;">
+          <div style="background:#0f172a; border-radius:10px; overflow:hidden; max-height:68vh; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
+            <img src="${img.url}" alt="${img.titulo}" style="max-width:100%; max-height:68vh; object-fit:contain;" />
+          </div>
+          <div style="text-align:left; background:var(--slate-50); padding:0.9rem; border-radius:8px; border:1px solid var(--slate-200); font-size:0.86rem; color:var(--slate-700);">
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:0.4rem;">
+              <span><strong>Categoria:</strong> ${img.categoria}</span>
+              <span><strong>Data:</strong> ${core.formatDateBR(img.data)} &nbsp;·&nbsp; <strong>Autor:</strong> ${img.autor || 'Equipe SIPA'}</span>
+            </div>
+            <div><strong>Descrição:</strong> ${img.descricao || 'Sem descrição.'}</div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+            <a href="${img.url}" download="${(img.titulo || 'sipa-imagem').replace(/[^a-zA-Z0-9]/g, '_')}.png" class="btn btn-primary">
+              ⬇️ Baixar Imagem em Alta Resolução
+            </a>
+            <button class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Fechar</button>
+          </div>
+        </div>
+      `
+    );
+  },
+
+  abrirModalImagemAreaSipa() {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('adicionar foto ou croqui da área')) return;
+    const autorPadrao = core.currentUser?.nome || 'Equipe SIPA · IF Baiano';
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    this.abrirModalGenerico(
+      '📸 Adicionar Foto, Croqui ou Imagem da Área Experimental',
+      `
+        <form onsubmit="AmadeusViews.salvarImagemAreaSipa(event)">
+          <div class="form-grid">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Título da Imagem / Croqui *</label>
+              <input type="text" id="sipa-img-titulo" class="form-control" placeholder="Ex: Vista Aérea da Gleba 01 em Plantio Direto" required />
+            </div>
+            <div class="form-group">
+              <label>Categoria do Registro *</label>
+              <select id="sipa-img-categoria" class="form-control" required>
+                <option value="Croqui Técnico">📐 Croqui / Mapa Esquemático</option>
+                <option value="Foto do Campo" selected>📸 Foto Atual do Campo</option>
+                <option value="Antes do Plantio">⏳ Área Antes do Plantio</option>
+                <option value="Foto de Drone">🛰️ Foto Aérea / Drone</option>
+                <option value="Solo / Raízes">🔬 Perfil de Solo / Raízes / Palhada</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Data da Foto / Registro *</label>
+              <input type="date" id="sipa-img-data" class="form-control" value="${hoje}" required />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Autor / Fotógrafo / Responsável *</label>
+              <input type="text" id="sipa-img-autor" class="form-control" value="${autorPadrao}" required />
+            </div>
+          </div>
+
+          <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px; padding:0.9rem; margin-bottom:1rem;">
+            <label style="font-weight:700; font-size:0.86rem; color:var(--slate-800); display:block; margin-bottom:0.4rem;">
+              Carregar Arquivo de Imagem (Câmera ou Galeria do Celular/PC)
+            </label>
+            <input type="file" id="sipa-img-file" class="form-control" accept="image/*" onchange="AmadeusViews.processarUploadImagemArea(this)" />
+            <input type="hidden" id="sipa-img-base64" />
+            <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--slate-500);">
+              💡 <em>Dica:</em> As fotos do celular são otimizadas e comprimidas automaticamente para carregar com rapidez mesmo sem internet no campo.
+            </div>
+
+            <div style="margin:0.75rem 0; font-size:0.8rem; font-weight:700; color:var(--slate-400); text-align:center;">— OU INSERIR LINK EXTERNO —</div>
+
+            <label style="font-size:0.82rem; font-weight:600; color:var(--slate-700); display:block; margin-bottom:0.25rem;">
+              Link Direto / URL da Imagem (opcional)
+            </label>
+            <input type="url" id="sipa-img-url" class="form-control" placeholder="https://exemplo.com/imagem.jpg" oninput="if(this.value){document.getElementById('sipa-img-preview').src=this.value; document.getElementById('sipa-img-preview').style.display='block';}" />
+
+            <div style="margin-top:0.75rem; text-align:center;">
+              <img id="sipa-img-preview" src="" alt="Pré-visualização" style="display:none; max-width:100%; max-height:220px; border-radius:8px; border:1px solid var(--slate-300); margin:0 auto; object-fit:contain;" />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Descrição / Observações Técnicas</label>
+            <textarea id="sipa-img-desc" class="form-control" rows="2" placeholder="Ex: Avaliação de palhada aos 45 dias após dessecação da forrageira..."></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar na Galeria</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  processarUploadImagemArea(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 1280;
+        const maxHeight = 960;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width / height > maxWidth / maxHeight) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+        const preview = document.getElementById('sipa-img-preview');
+        const hiddenInput = document.getElementById('sipa-img-base64');
+        if (preview) {
+          preview.src = dataUrl;
+          preview.style.display = 'block';
+        }
+        if (hiddenInput) {
+          hiddenInput.value = dataUrl;
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  },
+
+  salvarImagemAreaSipa(e) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    const base64 = document.getElementById('sipa-img-base64')?.value;
+    const url = document.getElementById('sipa-img-url')?.value.trim();
+    const finalUrl = base64 || url;
+
+    if (!finalUrl) {
+      core.toast('⚠️ Por favor, selecione uma foto pelo arquivo ou insira uma URL válida.', 'error');
+      return;
+    }
+
+    if (!core.db.sipa.mapaArea) {
+      core.db.sipa.mapaArea = { imagensCroqui: [], pontosMarcados: [] };
+    }
+    if (!Array.isArray(core.db.sipa.mapaArea.imagensCroqui)) {
+      core.db.sipa.mapaArea.imagensCroqui = [];
+    }
+
+    const novaImagem = {
+      id: 'sipa-img-' + Date.now(),
+      titulo: document.getElementById('sipa-img-titulo').value.trim(),
+      categoria: document.getElementById('sipa-img-categoria').value,
+      data: document.getElementById('sipa-img-data').value,
+      autor: document.getElementById('sipa-img-autor').value.trim(),
+      url: finalUrl,
+      descricao: document.getElementById('sipa-img-desc').value.trim()
+    };
+
+    core.db.sipa.mapaArea.imagensCroqui.unshift(novaImagem);
+    core.saveDatabase(`Adicionou imagem da área SIPA: ${novaImagem.titulo}`);
+    core.toast('📸 Foto / Croqui adicionado com sucesso à galeria!');
+    this.fecharModal();
+    this.renderMainContent();
+  },
+
+  excluirImagemAreaSipa(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir fotos da área')) return;
+    if (!confirm('Tem certeza que deseja excluir esta foto/croqui da galeria?')) return;
+
+    if (core.db.sipa?.mapaArea?.imagensCroqui) {
+      core.db.sipa.mapaArea.imagensCroqui = core.db.sipa.mapaArea.imagensCroqui.filter((x) => x.id !== id);
+      core.saveDatabase('Excluiu imagem da área SIPA');
+      core.toast('Imagem removida da galeria.');
+      this.renderMainContent();
+    }
+  },
+
+  abrirModalEditarAreaSipa() {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('editar configurações da área experimental')) return;
+    const m = core.db.sipa?.mapaArea || {
+      nomeArea: 'Área Experimental SIPA & Plantio Direto · Campus IF Baiano',
+      descricao: 'Gleba destinada ao projeto de Sistema de Plantio Direto (SPD) e consórcios forrageiros (Milho + Brachiaria / Integração Lavoura-Pecuária).',
+      lat: -14.2885,
+      lng: -39.8142,
+      zoom: 17,
+      areaHa: 1.5,
+      perimetroM: 520,
+      linkGoogleMaps: 'https://maps.google.com/?q=-14.2885,-39.8142',
+      linkGoogleEarth: 'https://earth.google.com/web/search/-14.2885,-39.8142'
+    };
+
+    this.abrirModalGenerico(
+      '✏️ Configurar Dados, Coordenadas e Links da Área Experimental',
+      `
+        <form onsubmit="AmadeusViews.salvarDadosAreaSipa(event)">
+          <div class="form-grid">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Nome / Identificação da Área *</label>
+              <input type="text" id="sipa-cfg-nome" class="form-control" value="${m.nomeArea}" required />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Descrição e Finalidade Técnica</label>
+              <textarea id="sipa-cfg-desc" class="form-control" rows="2">${m.descricao || ''}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Latitude Central (graus decimais) *</label>
+              <input type="number" step="0.000001" id="sipa-cfg-lat" class="form-control" value="${m.lat}" required />
+            </div>
+            <div class="form-group">
+              <label>Longitude Central (graus decimais) *</label>
+              <input type="number" step="0.000001" id="sipa-cfg-lng" class="form-control" value="${m.lng}" required />
+            </div>
+            <div class="form-group">
+              <label>Área Total (Hectares - ha) *</label>
+              <input type="number" step="0.01" id="sipa-cfg-ha" class="form-control" value="${m.areaHa || 1.5}" required />
+            </div>
+            <div class="form-group">
+              <label>Perímetro Linear Estimado (Metros - m)</label>
+              <input type="number" step="1" id="sipa-cfg-perim" class="form-control" value="${m.perimetroM || 520}" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Link Direto Google Maps</label>
+              <input type="url" id="sipa-cfg-maps" class="form-control" value="${m.linkGoogleMaps || ''}" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Link Direto Google Earth</label>
+              <input type="url" id="sipa-cfg-earth" class="form-control" value="${m.linkGoogleEarth || ''}" />
+            </div>
+          </div>
+          <div style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusViews.preencherGpsNoFormulario()">
+              📍 Preencher com GPS Atual do Aparelho
+            </button>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Configurações da Área</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  preencherGpsNoFormulario() {
+    const core = window.AmadeusCore;
+    if (!navigator.geolocation) {
+      core.toast('⚠️ Geolocalização não suportada.', 'error');
+      return;
+    }
+    core.toast('🛰️ Capturando coordenadas...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(6));
+        const lng = parseFloat(pos.coords.longitude.toFixed(6));
+        const latEl = document.getElementById('sipa-cfg-lat');
+        const lngEl = document.getElementById('sipa-cfg-lng');
+        const mapsEl = document.getElementById('sipa-cfg-maps');
+        const earthEl = document.getElementById('sipa-cfg-earth');
+        if (latEl) latEl.value = lat;
+        if (lngEl) lngEl.value = lng;
+        if (mapsEl) mapsEl.value = `https://maps.google.com/?q=${lat},${lng}`;
+        if (earthEl) earthEl.value = `https://earth.google.com/web/search/${lat},${lng}`;
+        core.toast('📍 Coordenadas preenchidas no formulário!');
+      },
+      () => {
+        core.toast('⚠️ Erro ao capturar sinal de GPS.', 'error');
+      },
+      { enableHighAccuracy: true }
+    );
+  },
+
+  salvarDadosAreaSipa(e) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    const lat = parseFloat(document.getElementById('sipa-cfg-lat').value);
+    const lng = parseFloat(document.getElementById('sipa-cfg-lng').value);
+
+    if (!core.db.sipa.mapaArea) {
+      core.db.sipa.mapaArea = { imagensCroqui: [], pontosMarcados: [] };
+    }
+
+    core.db.sipa.mapaArea.nomeArea = document.getElementById('sipa-cfg-nome').value.trim();
+    core.db.sipa.mapaArea.descricao = document.getElementById('sipa-cfg-desc').value.trim();
+    core.db.sipa.mapaArea.lat = lat;
+    core.db.sipa.mapaArea.lng = lng;
+    core.db.sipa.mapaArea.areaHa = parseFloat(document.getElementById('sipa-cfg-ha').value) || 1.5;
+    core.db.sipa.mapaArea.perimetroM = parseFloat(document.getElementById('sipa-cfg-perim').value) || 520;
+    core.db.sipa.mapaArea.linkGoogleMaps =
+      document.getElementById('sipa-cfg-maps').value.trim() || `https://maps.google.com/?q=${lat},${lng}`;
+    core.db.sipa.mapaArea.linkGoogleEarth =
+      document.getElementById('sipa-cfg-earth').value.trim() || `https://earth.google.com/web/search/${lat},${lng}`;
+
+    core.saveDatabase('Atualizou configurações e links da Área Experimental SIPA');
+    core.toast('✅ Informações e links da Área SIPA atualizados com sucesso!');
+    this.fecharModal();
+    this.renderMainContent();
+  },
+
+  abrirModalPontoMapaSipa(idExistente = null, latSugerida = null, lngSugerida = null) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('marcar ponto no mapa')) return;
+    const pontos = core.db.sipa?.mapaArea?.pontosMarcados || [];
+    const ex = idExistente ? pontos.find((p) => p.id === idExistente) : null;
+    const latDef = latSugerida || (ex ? ex.lat : core.db.sipa?.mapaArea?.lat || -14.2885);
+    const lngDef = lngSugerida || (ex ? ex.lng : core.db.sipa?.mapaArea?.lng || -39.8142);
+
+    this.abrirModalGenerico(
+      '📌 Adicionar / Editar Ponto no Mapa SIPA',
+      `
+        <form onsubmit="AmadeusViews.salvarPontoMapaSipa(event, '${idExistente || ''}')">
+          <div class="form-grid">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Nome / Rótulo do Ponto *</label>
+              <input type="text" id="sipa-pt-rotulo" class="form-control" value="${ex ? ex.rotulo : ''}" placeholder="Ex: Pluviômetro Gleba 01, Trincheira Solo..." required />
+            </div>
+            <div class="form-group">
+              <label>Tipo de Marco *</label>
+              <select id="sipa-pt-tipo" class="form-control" required>
+                <option value="talhao" ${ex && ex.tipo === 'talhao' ? 'selected' : ''}>🌾 Talhão / Gleba SPD</option>
+                <option value="pluviometro" ${ex && ex.tipo === 'pluviometro' ? 'selected' : ''}>🌧️ Pluviômetro</option>
+                <option value="pastejo" ${ex && ex.tipo === 'pastejo' ? 'selected' : ''}>🐂 Piquete / Pastejo</option>
+                <option value="solo" ${ex && ex.tipo === 'solo' ? 'selected' : ''}>🔬 Coleta de Solo / Trincheira</option>
+                <option value="infra" ${ex && ex.tipo === 'infra' ? 'selected' : ''}>🚜 Acesso / Equipamento</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Latitude *</label>
+              <input type="number" step="0.000001" id="sipa-pt-lat" class="form-control" value="${latDef}" required />
+            </div>
+            <div class="form-group">
+              <label>Longitude *</label>
+              <input type="number" step="0.000001" id="sipa-pt-lng" class="form-control" value="${lngDef}" required />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Observação / Descrição</label>
+              <input type="text" id="sipa-pt-obs" class="form-control" value="${ex ? ex.obs : ''}" placeholder="Ex: Leituras diárias, profundidade 0-20 cm..." />
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Ponto no Mapa</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarPontoMapaSipa(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    if (!core.db.sipa.mapaArea) {
+      core.db.sipa.mapaArea = { imagensCroqui: [], pontosMarcados: [] };
+    }
+    if (!Array.isArray(core.db.sipa.mapaArea.pontosMarcados)) {
+      core.db.sipa.mapaArea.pontosMarcados = [];
+    }
+
+    const novo = {
+      id: idExistente || 'sipa-pt-' + Date.now(),
+      rotulo: document.getElementById('sipa-pt-rotulo').value.trim(),
+      tipo: document.getElementById('sipa-pt-tipo').value,
+      lat: parseFloat(document.getElementById('sipa-pt-lat').value),
+      lng: parseFloat(document.getElementById('sipa-pt-lng').value),
+      obs: document.getElementById('sipa-pt-obs').value.trim()
+    };
+
+    if (idExistente) {
+      const idx = core.db.sipa.mapaArea.pontosMarcados.findIndex((x) => x.id === idExistente);
+      if (idx !== -1) core.db.sipa.mapaArea.pontosMarcados[idx] = novo;
+    } else {
+      core.db.sipa.mapaArea.pontosMarcados.push(novo);
+    }
+
+    core.saveDatabase(`Salvou ponto no mapa SIPA: ${novo.rotulo}`);
+    core.toast('📌 Ponto marcado no mapa com sucesso!');
+    this.fecharModal();
+    this.renderMainContent();
+  },
+
+  excluirPontoMapaSipa(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir ponto do mapa')) return;
+    if (!confirm('Deseja excluir este marco do mapa?')) return;
+
+    if (core.db.sipa?.mapaArea?.pontosMarcados) {
+      core.db.sipa.mapaArea.pontosMarcados = core.db.sipa.mapaArea.pontosMarcados.filter((x) => x.id !== id);
+      core.saveDatabase('Excluiu ponto no mapa SIPA');
+      core.toast('Ponto removido do mapa.');
+      this.renderMainContent();
+    }
   },
 
   calcularRegulagemPlantioSPD() {
