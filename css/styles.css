@@ -700,41 +700,311 @@ table.data-table tr:hover td {
   box-shadow: var(--shadow-sm);
 }
 
-/* Responsividade Mobile */
+/* Grids Responsivos (Notebook & Celular) */
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.agendamento-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Barra Inferior de Navegação Rápida no Celular (App Bar) */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-top: 1px solid var(--slate-200);
+  box-shadow: 0 -4px 16px rgba(15, 41, 26, 0.10);
+  z-index: 1200;
+  padding: 0.35rem 0.25rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  justify-content: space-around;
+  align-items: center;
+}
+
+.mobile-bottom-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  background: transparent;
+  border: none;
+  color: var(--slate-600);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.35rem 0.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.15s ease;
+}
+
+.mobile-bottom-btn .mb-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.mobile-bottom-btn.active {
+  color: var(--green-800);
+  background: var(--green-50);
+}
+
+/* Seletor de Modo de Visualização (Notebook / Celular) */
+.view-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 0.15rem;
+  gap: 0.15rem;
+}
+
+.view-mode-btn {
+  border: none;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 0.73rem;
+  font-weight: 700;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.view-mode-btn.active {
+  background: #ffffff;
+  color: var(--green-900);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Dica de rolagem horizontal para tabelas no celular */
+.mobile-table-hint {
+  display: none;
+  font-size: 0.72rem;
+  color: var(--slate-500);
+  margin-bottom: 0.35rem;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Simulação de Tela Celular quando ativado pelo usuário no Notebook */
+body.force-mobile-view {
+  background: #0f172a;
+  align-items: center;
+}
+
+body.force-mobile-view .app-header,
+body.force-mobile-view .app-layout {
+  max-width: 430px;
+  width: 100%;
+  margin: 0 auto;
+  background: #f3f7f4;
+}
+
+body.force-mobile-view .app-header {
+  background: linear-gradient(135deg, var(--green-900) 0%, var(--green-800) 55%, var(--green-700) 100%);
+}
+
+body.force-mobile-view .mobile-bottom-nav {
+  display: flex;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+/* Regras compartilhadas para Telas Mobile (<= 900px) OU Modo Celular Ativado */
 @media (max-width: 900px) {
-  .app-layout {
-    flex-direction: column;
+  body:not(.force-desktop-view) .app-header {
+    padding: 0.55rem 0.75rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
-  .sidebar {
+  body:not(.force-desktop-view) .brand-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  body:not(.force-desktop-view) .brand-title {
+    font-size: 1.08rem;
+  }
+  body:not(.force-desktop-view) .brand-subtitle {
+    display: none;
+  }
+  body:not(.force-desktop-view) .header-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  body:not(.force-desktop-view) .app-layout {
+    flex-direction: column;
+    padding-bottom: 74px;
+  }
+  body:not(.force-desktop-view) .sidebar {
     width: 100%;
     flex-direction: row;
     overflow-x: auto;
-    padding: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.45rem 0.5rem;
     border-right: none;
     border-bottom: 1px solid var(--slate-200);
     position: sticky;
-    top: 62px;
+    top: 0;
     z-index: 90;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   }
-  .nav-section-label {
+  body:not(.force-desktop-view) .nav-section-label {
     display: none;
   }
-  .nav-btn {
+  body:not(.force-desktop-view) .nav-btn {
     white-space: nowrap;
     width: auto;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.82rem;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
   }
-  .main-content {
-    padding: 1rem 0.75rem;
+  body:not(.force-desktop-view) .main-content {
+    padding: 0.75rem 0.65rem 1.5rem;
   }
-  .brand-subtitle {
-    display: none;
+  body:not(.force-desktop-view) .card {
+    padding: 0.9rem;
+    margin-bottom: 0.9rem;
+    border-radius: 12px;
+  }
+  body:not(.force-desktop-view) .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+  }
+  body:not(.force-desktop-view) .kpi-card {
+    padding: 0.75rem 0.85rem;
+  }
+  body:not(.force-desktop-view) .kpi-value {
+    font-size: 1.25rem;
+  }
+  body:not(.force-desktop-view) .kpi-label {
+    font-size: 0.7rem;
+  }
+  body:not(.force-desktop-view) .kpi-sub {
+    font-size: 0.7rem;
+  }
+  body:not(.force-desktop-view) .responsive-grid-2,
+  body:not(.force-desktop-view) .agendamento-layout-grid,
+  body:not(.force-desktop-view) .schedule-cards-grid,
+  body:not(.force-desktop-view) .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+  body:not(.force-desktop-view) .calc-box {
+    max-width: 100%;
+    width: 100%;
+  }
+  body:not(.force-desktop-view) .form-control {
+    font-size: 16px; /* Evita zoom automático no iOS/Android ao tocar no campo */
+    padding: 0.6rem 0.75rem;
+  }
+  body:not(.force-desktop-view) .portal-hero {
+    padding: 1.25rem 1rem;
+  }
+  body:not(.force-desktop-view) .mobile-bottom-nav {
+    display: flex;
+  }
+  body:not(.force-desktop-view) .toast-container {
+    bottom: 4.6rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    max-width: none;
   }
 }
 
+/* Quando o usuário clica em "📱 Celular" mesmo estando no Notebook */
+body.force-mobile-view .app-header {
+  padding: 0.55rem 0.75rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+body.force-mobile-view .brand-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+body.force-mobile-view .brand-title {
+  font-size: 1.08rem;
+}
+body.force-mobile-view .brand-subtitle {
+  display: none;
+}
+body.force-mobile-view .header-actions {
+  width: 100%;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+body.force-mobile-view .app-layout {
+  flex-direction: column;
+  padding-bottom: 78px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.45);
+}
+body.force-mobile-view .sidebar {
+  width: 100%;
+  flex-direction: row;
+  overflow-x: auto;
+  padding: 0.45rem 0.5rem;
+  border-right: none;
+  border-bottom: 1px solid var(--slate-200);
+}
+body.force-mobile-view .nav-section-label {
+  display: none;
+}
+body.force-mobile-view .nav-btn {
+  white-space: nowrap;
+  width: auto;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+body.force-mobile-view .main-content {
+  padding: 0.75rem 0.65rem 1.5rem;
+}
+body.force-mobile-view .card {
+  padding: 0.9rem;
+  margin-bottom: 0.9rem;
+}
+body.force-mobile-view .kpi-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+body.force-mobile-view .kpi-value {
+  font-size: 1.22rem;
+}
+body.force-mobile-view .responsive-grid-2,
+body.force-mobile-view .agendamento-layout-grid,
+body.force-mobile-view .schedule-cards-grid,
+body.force-mobile-view .form-grid {
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem;
+}
+body.force-mobile-view .calc-box {
+  max-width: 100%;
+  width: 100%;
+}
+
 @media print {
-  .app-header, .sidebar, .no-print, .toast-container {
+  .app-header, .sidebar, .mobile-bottom-nav, .no-print, .toast-container {
     display: none !important;
   }
   .main-content {
