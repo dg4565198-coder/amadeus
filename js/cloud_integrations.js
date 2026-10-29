@@ -22,13 +22,13 @@ const AmadeusCloud = {
   config: {
     firebase: { ...DEFAULT_FIREBASE_CONFIG },
     github: {
-      enabled: false,
-      owner: '',
-      repo: 'amadeus-gestao-rural',
+      enabled: true,
+      owner: 'dg4565198-coder',
+      repo: 'amadeus',
       branch: 'main',
       token: '',
-      lastPush: null,
-      pagesUrl: ''
+      lastPush: new Date().toISOString(),
+      pagesUrl: 'https://dg4565198-coder.github.io/amadeus/'
     }
   },
 
@@ -157,6 +157,18 @@ const AmadeusCloud = {
         if (remoteDb && remoteDb.chuvas && remoteDb.usuarios) {
           window.AmadeusCore.db = remoteDb;
           localStorage.setItem('AMADEUS_DB_V2', JSON.stringify(remoteDb));
+          // Atualiza o perfil/status do usuário logado caso o Admin tenha mudado na nuvem
+          if (window.AmadeusCore.currentUser) {
+            const atualizado = remoteDb.usuarios.find((u) => u.id === window.AmadeusCore.currentUser.id);
+            if (atualizado) {
+              if (!atualizado.ativo || atualizado.statusAcesso === 'recusado' || atualizado.statusAcesso === 'pendente') {
+                window.AmadeusCore.logout();
+              } else {
+                window.AmadeusCore.currentUser = atualizado;
+                localStorage.setItem('AMADEUS_SESSION_V3', JSON.stringify(atualizado));
+              }
+            }
+          }
           fb.lastSync = new Date().toISOString();
           fb.statusMsg = 'Conectado e sincronizado (Realtime DB)';
           this.saveConfig();
@@ -186,7 +198,18 @@ const AmadeusCloud = {
       return false;
     }
     try {
-      // Tenta login; se o usuário ainda não existir no Firebase Auth, oferece criação automática
+      await this.pullFromFirebase(true);
+      const core = window.AmadeusCore;
+      const user = core.db.usuarios.find((u) => (u.email || '').toLowerCase() === email.toLowerCase());
+      if (user && user.statusAcesso === 'pendente') {
+        core.toast('⏳ Seu cadastro está aguardando autorização do Administrador.', 'aviso');
+        return false;
+      }
+      if (user && (user.statusAcesso === 'recusado' || !user.ativo)) {
+        core.toast('🚫 Seu acesso está bloqueado pelo Administrador.', 'erro');
+        return false;
+      }
+
       let res = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(fb.apiKey)}`,
         {
@@ -197,19 +220,6 @@ const AmadeusCloud = {
       );
       let data = await res.json();
 
-      if (!res.ok && data.error?.message === 'EMAIL_NOT_FOUND') {
-        // Cria automaticamente a conta no Firebase Auth na primeira vez
-        res = await fetch(
-          `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(fb.apiKey)}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, returnSecureToken: true })
-          }
-        );
-        data = await res.json();
-      }
-
       if (!res.ok) {
         throw new Error(data.error?.message || 'Falha na autenticação Firebase');
       }
@@ -218,15 +228,13 @@ const AmadeusCloud = {
       fb.authEmail = data.email;
       this.saveConfig();
 
-      const core = window.AmadeusCore;
-      let user = core.db.usuarios.find((u) => u.email.toLowerCase() === email.toLowerCase());
       if (!user) {
-        user = core.db.usuarios[0];
+        core.toast('Conta autenticada no Firebase, mas ainda não autorizada na lista de usuários do AMADEUS. Solicite acesso na aba de Cadastro!', 'aviso');
+        return false;
       }
       core.currentUser = user;
-      localStorage.setItem('AMADEUS_SESSION_V2', JSON.stringify(user));
-      core.toast(`🔥 Autenticado via Firebase Auth (${data.email}) no projeto amadeus-80eeb!`);
-      await this.pullFromFirebase(true);
+      localStorage.setItem('AMADEUS_SESSION_V3', JSON.stringify(user));
+      core.toast(`🔥 Autenticado via Firebase Auth (${data.email}) como ${user.nome}!`);
       window.AmadeusViews.renderApp();
       return true;
     } catch (err) {
