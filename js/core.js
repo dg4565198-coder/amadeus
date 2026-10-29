@@ -332,6 +332,10 @@ const AmadeusCore = {
     return '👁️ Leitor';
   },
 
+  getRoleLabel(perfil) {
+    return this.formatRoleLabel(perfil);
+  },
+
   isAdmin() {
     return Boolean(this.currentUser && this.currentUser.perfil === 'admin');
   },
