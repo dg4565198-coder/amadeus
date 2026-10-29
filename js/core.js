@@ -138,7 +138,34 @@ const AmadeusCore = {
             observacoes: 'Excelente manutenção da umidade superficial e supressão de plantas espontâneas pela palhada no Sistema de Plantio Direto.'
           }
         ],
-        registrosCampo: []
+        registrosCampo: [],
+        mapaArea: {
+          nomeArea: 'Área Experimental SIPA & Plantio Direto · Campus IF Baiano',
+          descricao: 'Gleba destinada ao projeto de Sistema de Plantio Direto (SPD) e consórcios forrageiros (Milho + Brachiaria / Integração Lavoura-Pecuária).',
+          lat: -14.2885,
+          lng: -39.8142,
+          zoom: 17,
+          areaHa: 1.5,
+          perimetroM: 520,
+          linkGoogleMaps: 'https://maps.google.com/?q=-14.2885,-39.8142',
+          linkGoogleEarth: 'https://earth.google.com/web/search/-14.2885,-39.8142',
+          imagensCroqui: [
+            {
+              id: 'croqui-padrao-1',
+              titulo: 'Croqui Técnico Esquemático da Área Experimental (1,50 ha)',
+              categoria: 'Croqui Técnico',
+              data: '2026-03-01',
+              autor: 'Coordenação SIPA · IF Baiano',
+              url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%"><rect width="800" height="500" fill="#f8fafc"/><rect x="20" y="20" width="760" height="460" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/><polygon points="50,90 490,80 530,390 80,410" fill="#dcfce7" stroke="#16a34a" stroke-width="3" stroke-dasharray="8,5"/><text x="280" y="205" font-family="system-ui, sans-serif" font-size="20" font-weight="800" fill="#14532d" text-anchor="middle">GLEBA SPD 01 (1,50 ha)</text><text x="280" y="230" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#166534" text-anchor="middle">Consórcio: Milho Grão + Brachiaria ruziziensis</text><text x="280" y="252" font-family="system-ui, sans-serif" font-size="12" fill="#15803d" text-anchor="middle">Sistema de Plantio Direto na Palhada (SPD) · Linhas a 50 cm</text><line x1="90" y1="130" x2="460" y2="120" stroke="#86efac" stroke-width="1.8"/><line x1="95" y1="155" x2="470" y2="145" stroke="#86efac" stroke-width="1.8"/><line x1="100" y1="285" x2="495" y2="275" stroke="#86efac" stroke-width="1.8"/><line x1="105" y1="315" x2="505" y2="305" stroke="#86efac" stroke-width="1.8"/><line x1="110" y1="345" x2="515" y2="335" stroke="#86efac" stroke-width="1.8"/><polygon points="555,100 745,110 735,360 565,350" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="650" y="215" font-family="system-ui, sans-serif" font-size="15" font-weight="800" fill="#92400e" text-anchor="middle">PIQUETE PASTEJO</text><text x="650" y="238" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#b45309" text-anchor="middle">Integração Lavoura-Pecuária</text><text x="650" y="258" font-family="system-ui, sans-serif" font-size="11" fill="#78350f" text-anchor="middle">Lote Bovino Experimental</text><circle cx="525" cy="85" r="16" fill="#2563eb" stroke="#ffffff" stroke-width="3"/><text x="525" y="90" font-family="system-ui, sans-serif" font-size="13" fill="#ffffff" text-anchor="middle" font-weight="bold">🌧️</text><text x="525" y="62" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#1d4ed8" text-anchor="middle">Pluviômetro Oficial</text><path d="M 50,445 Q 400,430 750,445" fill="none" stroke="#94a3b8" stroke-width="10" stroke-linecap="round"/><text x="400" y="468" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#475569" text-anchor="middle">🛣️ Estrada Interna de Acesso do Campus · IF Baiano</text><g transform="translate(68, 65)"><circle cx="0" cy="0" r="20" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/><polygon points="0,-16 4,-3 0,0 -4,-3" fill="#dc2626"/><polygon points="0,16 4,3 0,0 -4,3" fill="#64748b"/><text x="0" y="-19" font-family="system-ui, sans-serif" font-size="10" font-weight="900" fill="#dc2626" text-anchor="middle">N</text></g><rect x="100" y="32" width="450" height="32" rx="6" fill="#14532d"/><text x="325" y="53" font-family="system-ui, sans-serif" font-size="12" font-weight="800" fill="#ffffff" text-anchor="middle">📐 CROQUI ESQUEMÁTICO TÉCNICO · ÁREA EXPERIMENTAL SIPA (1,5 ha)</text></svg>'),
+              descricao: 'Divisão técnica da Gleba SPD 01, Piquete de Pastejo ILP, Pluviômetro oficial e vias internas do Campus IF Baiano.'
+            }
+          ],
+          pontosMarcados: [
+            { id: 'pt-1', rotulo: 'Gleba SPD 01 (Milho + Brachiaria)', tipo: 'talhao', lat: -14.2885, lng: -39.8142, obs: '1,5 ha implantado em SPD' },
+            { id: 'pt-2', rotulo: 'Pluviômetro Oficial Área Exp.', tipo: 'pluviometro', lat: -14.2881, lng: -39.8139, obs: 'Leituras diárias 2025/2026' },
+            { id: 'pt-3', rotulo: 'Piquete / Ponto de Pastejo', tipo: 'pastejo', lat: -14.2888, lng: -39.8145, obs: 'Lote experimental bovino' }
+          ]
+        }
       };
     } else {
       ['plantios', 'avaliacoes', 'registrosCampo'].forEach((sub) => {
@@ -149,6 +176,42 @@ const AmadeusCore = {
               : [];
         }
       });
+      if (!this.db.sipa.mapaArea || typeof this.db.sipa.mapaArea !== 'object') {
+        this.db.sipa.mapaArea = {
+          nomeArea: 'Área Experimental SIPA & Plantio Direto · Campus IF Baiano',
+          descricao: 'Gleba destinada ao projeto de Sistema de Plantio Direto (SPD) e consórcios forrageiros (Milho + Brachiaria / Integração Lavoura-Pecuária).',
+          lat: -14.2885,
+          lng: -39.8142,
+          zoom: 17,
+          areaHa: 1.5,
+          perimetroM: 520,
+          linkGoogleMaps: 'https://maps.google.com/?q=-14.2885,-39.8142',
+          linkGoogleEarth: 'https://earth.google.com/web/search/-14.2885,-39.8142',
+          imagensCroqui: [],
+          pontosMarcados: [
+            { id: 'pt-1', rotulo: 'Gleba SPD 01 (Milho + Brachiaria)', tipo: 'talhao', lat: -14.2885, lng: -39.8142, obs: '1,5 ha implantado em SPD' },
+            { id: 'pt-2', rotulo: 'Pluviômetro Oficial Área Exp.', tipo: 'pluviometro', lat: -14.2881, lng: -39.8139, obs: 'Leituras diárias 2025/2026' },
+            { id: 'pt-3', rotulo: 'Piquete / Ponto de Pastejo', tipo: 'pastejo', lat: -14.2888, lng: -39.8145, obs: 'Lote experimental bovino' }
+          ]
+        };
+      }
+      if (!Array.isArray(this.db.sipa.mapaArea.imagensCroqui)) {
+        this.db.sipa.mapaArea.imagensCroqui = [];
+      }
+      if (this.db.sipa.mapaArea.imagensCroqui.length === 0) {
+        this.db.sipa.mapaArea.imagensCroqui.push({
+          id: 'croqui-padrao-1',
+          titulo: 'Croqui Técnico Esquemático da Área Experimental (1,50 ha)',
+          categoria: 'Croqui Técnico',
+          data: '2026-03-01',
+          autor: 'Coordenação SIPA · IF Baiano',
+          url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%"><rect width="800" height="500" fill="#f8fafc"/><rect x="20" y="20" width="760" height="460" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/><polygon points="50,90 490,80 530,390 80,410" fill="#dcfce7" stroke="#16a34a" stroke-width="3" stroke-dasharray="8,5"/><text x="280" y="205" font-family="system-ui, sans-serif" font-size="20" font-weight="800" fill="#14532d" text-anchor="middle">GLEBA SPD 01 (1,50 ha)</text><text x="280" y="230" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#166534" text-anchor="middle">Consórcio: Milho Grão + Brachiaria ruziziensis</text><text x="280" y="252" font-family="system-ui, sans-serif" font-size="12" fill="#15803d" text-anchor="middle">Sistema de Plantio Direto na Palhada (SPD) · Linhas a 50 cm</text><line x1="90" y1="130" x2="460" y2="120" stroke="#86efac" stroke-width="1.8"/><line x1="95" y1="155" x2="470" y2="145" stroke="#86efac" stroke-width="1.8"/><line x1="100" y1="285" x2="495" y2="275" stroke="#86efac" stroke-width="1.8"/><line x1="105" y1="315" x2="505" y2="305" stroke="#86efac" stroke-width="1.8"/><line x1="110" y1="345" x2="515" y2="335" stroke="#86efac" stroke-width="1.8"/><polygon points="555,100 745,110 735,360 565,350" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/><text x="650" y="215" font-family="system-ui, sans-serif" font-size="15" font-weight="800" fill="#92400e" text-anchor="middle">PIQUETE PASTEJO</text><text x="650" y="238" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="#b45309" text-anchor="middle">Integração Lavoura-Pecuária</text><text x="650" y="258" font-family="system-ui, sans-serif" font-size="11" fill="#78350f" text-anchor="middle">Lote Bovino Experimental</text><circle cx="525" cy="85" r="16" fill="#2563eb" stroke="#ffffff" stroke-width="3"/><text x="525" y="90" font-family="system-ui, sans-serif" font-size="13" fill="#ffffff" text-anchor="middle" font-weight="bold">🌧️</text><text x="525" y="62" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#1d4ed8" text-anchor="middle">Pluviômetro Oficial</text><path d="M 50,445 Q 400,430 750,445" fill="none" stroke="#94a3b8" stroke-width="10" stroke-linecap="round"/><text x="400" y="468" font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#475569" text-anchor="middle">🛣️ Estrada Interna de Acesso do Campus · IF Baiano</text><g transform="translate(68, 65)"><circle cx="0" cy="0" r="20" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/><polygon points="0,-16 4,-3 0,0 -4,-3" fill="#dc2626"/><polygon points="0,16 4,3 0,0 -4,3" fill="#64748b"/><text x="0" y="-19" font-family="system-ui, sans-serif" font-size="10" font-weight="900" fill="#dc2626" text-anchor="middle">N</text></g><rect x="100" y="32" width="450" height="32" rx="6" fill="#14532d"/><text x="325" y="53" font-family="system-ui, sans-serif" font-size="12" font-weight="800" fill="#ffffff" text-anchor="middle">📐 CROQUI ESQUEMÁTICO TÉCNICO · ÁREA EXPERIMENTAL SIPA (1,5 ha)</text></svg>'),
+          descricao: 'Divisão técnica da Gleba SPD 01, Piquete de Pastejo ILP, Pluviômetro oficial e vias internas do Campus IF Baiano.'
+        });
+      }
+      if (!Array.isArray(this.db.sipa.mapaArea.pontosMarcados)) {
+        this.db.sipa.mapaArea.pontosMarcados = [];
+      }
     }
 
     if (!this.db.configuracoes || typeof this.db.configuracoes !== 'object') {
