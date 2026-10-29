@@ -77,7 +77,20 @@ const AmadeusCore = {
       if (!Array.isArray(atv.responsaveisIds)) {
         atv.responsaveisIds = [];
       }
+      if (!Array.isArray(atv.responsaveisNomes)) {
+        atv.responsaveisNomes = [];
+      }
     });
+
+    // Garante que as 43 atividades consolidadas do Diário de Campo e os 19 participantes estejam carregados
+    if (!this.db.atividades.some((a) => a.id === 'atv-pdf-01')) {
+      const seed = window.AMADEUS_SEED.getInitialDatabase();
+      this.db.atividades = seed.atividades;
+      this.db.pessoas = seed.pessoas;
+      if (!this.db.animais || this.db.animais.length === 0 || !this.db.animais.some((a) => a.nome === 'Boreal')) {
+        this.db.animais = seed.animais;
+      }
+    }
 
     if (!this.db.producaoEstoqueFinanceiro || typeof this.db.producaoEstoqueFinanceiro !== 'object') {
       this.db.producaoEstoqueFinanceiro = { producao: [], estoque: [], financeiro: [] };
@@ -1126,6 +1139,92 @@ const AmadeusCore = {
     this.abrirJanelaImpressaoPDF(
       `Relatório Individual de Horas e Atividades — ${p.nome}`,
       'Cadastro e Gestão de Pessoas · AMADEUS',
+      html
+    );
+  },
+
+  exportarRelatorioAtividadesConsolidadoPDF() {
+    const lista = [...(this.db.atividades || [])].sort((a, b) => b.data.localeCompare(a.data));
+    const totalHoras = lista.reduce((s, a) => s + (Number(a.horasTrabalhadas) || 0), 0);
+    const totalAnexos = lista.reduce((s, a) => s + ((a.anexos && a.anexos.length) || 0), 0);
+
+    // Calcula carga horária por participante a partir das atividades registradas
+    const mapaParticipantes = {};
+    lista.forEach((a) => {
+      const h = Number(a.horasTrabalhadas) || 0;
+      (a.responsaveisNomes || []).forEach((nome) => {
+        if (!mapaParticipantes[nome]) mapaParticipantes[nome] = 0;
+        mapaParticipantes[nome] += h;
+      });
+    });
+    const rankingParticipantes = Object.entries(mapaParticipantes).sort((a, b) => b[1] - a[1]);
+
+    const linhasAtv = lista
+      .map(
+        (a) => `
+      <tr>
+        <td style="white-space:nowrap;">${this.formatDateBR(a.data)}</td>
+        <td>
+          <strong>${a.titulo}</strong><br/>
+          <span style="color:#475569; font-size:11px;">${a.descricao || ''}</span>
+        </td>
+        <td>${a.local || 'IF Baino Unidade Experimental'}</td>
+        <td>${(a.responsaveisNomes || []).join(', ')}</td>
+        <td style="white-space:nowrap;"><strong>${String(a.horasTrabalhadas).replace('.', ',')} h</strong></td>
+        <td>${a.registradoPor || 'Guilherme Dias Pereira'}</td>
+      </tr>`
+      )
+      .join('');
+
+    const linhasPart = rankingParticipantes
+      .map(
+        ([nome, horas]) => `
+      <tr>
+        <td>${nome}</td>
+        <td><strong>${String(Number(horas.toFixed(1))).replace('.', ',')} h</strong></td>
+      </tr>`
+      )
+      .join('');
+
+    const html = `
+      <div class="meta-box">
+        <strong>Período:</strong> Todos os registros consolidados &nbsp;|&nbsp;
+        <strong>Unidade:</strong> IF Baiano — Unidade Experimental
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-item"><strong>${lista.length}</strong><span>Atividades</span></div>
+        <div class="kpi-item"><strong>${String(Number(totalHoras.toFixed(1))).replace('.', ',')} h</strong><span>Horas Registradas</span></div>
+        <div class="kpi-item"><strong>${rankingParticipantes.length}</strong><span>Participantes</span></div>
+        <div class="kpi-item"><strong>${totalAnexos}</strong><span>Anexos</span></div>
+      </div>
+      <h3>Registros de Atividades</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Atividade</th>
+            <th>Localização</th>
+            <th>Participantes</th>
+            <th>Horas</th>
+            <th>Registrado Por</th>
+          </tr>
+        </thead>
+        <tbody>${linhasAtv}</tbody>
+      </table>
+      <h3 style="margin-top:24px;">Carga Horária por Participante</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Participante</th>
+            <th>Total no Período</th>
+          </tr>
+        </thead>
+        <tbody>${linhasPart}</tbody>
+      </table>
+    `;
+    this.abrirJanelaImpressaoPDF(
+      'Relatório de Atividades — Diário de Campo',
+      'Registros consolidados · Todos os registros',
       html
     );
   },
