@@ -105,6 +105,52 @@ const AmadeusCore = {
       });
     }
 
+    if (!this.db.sipa || typeof this.db.sipa !== 'object') {
+      this.db.sipa = {
+        plantios: [
+          {
+            id: 'sipa-pl-01',
+            gleba: 'Área Experimental SIPA · Campus IF Baiano',
+            cultura: 'Milho + Brachiaria (Consórcio Santa Fé / SPD)',
+            sistema: 'Sistema de Plantio Direto (SPD) na Palhada',
+            dataPlantio: '2026-03-10',
+            areaHa: 1.5,
+            espacamentoCm: 50,
+            populacaoHa: 60000,
+            palhadaInicialTha: 6.2,
+            adubacaoBase: 'NPK 08-28-16 + Cobertura Ureia',
+            responsavel: 'Guilherme Dias Pereira',
+            status: 'Em Desenvolvimento',
+            observacoes: 'Implantação em Sistema de Plantio Direto (SPD) no campus visando produção de grãos/silagem e formação de pastagem para integração lavoura-pecuária.'
+          }
+        ],
+        avaliacoes: [
+          {
+            id: 'sipa-av-01',
+            data: '2026-04-15',
+            gleba: 'Área Experimental SIPA · Campus IF Baiano',
+            tipoAvaliacao: 'Cobertura de Solo e Massa Seca de Palhada (SPD)',
+            coberturaSoloPct: 88,
+            massaSecaTha: 6.4,
+            alturaPlantaCm: 115,
+            umidadeSoloStatus: 'Adequada (Conservada pela palhada)',
+            responsavel: 'Guilherme Dias Pereira',
+            observacoes: 'Excelente manutenção da umidade superficial e supressão de plantas espontâneas pela palhada no Sistema de Plantio Direto.'
+          }
+        ],
+        registrosCampo: []
+      };
+    } else {
+      ['plantios', 'avaliacoes', 'registrosCampo'].forEach((sub) => {
+        if (!Array.isArray(this.db.sipa[sub])) {
+          this.db.sipa[sub] =
+            this.db.sipa[sub] && typeof this.db.sipa[sub] === 'object'
+              ? Object.values(this.db.sipa[sub])
+              : [];
+        }
+      });
+    }
+
     if (!this.db.configuracoes || typeof this.db.configuracoes !== 'object') {
       this.db.configuracoes = window.AMADEUS_SEED.getInitialDatabase().configuracoes;
     }
