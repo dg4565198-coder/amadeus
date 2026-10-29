@@ -1129,26 +1129,66 @@ const AmadeusViews = {
       );
     }
 
+    const totalHoras = lista.reduce((s, a) => s + (Number(a.horasTrabalhadas) || 0), 0);
+    const totalAnexos = lista.reduce((s, a) => s + ((a.anexos && a.anexos.length) || 0), 0);
+    const mapaPart = {};
+    lista.forEach((a) => {
+      const h = Number(a.horasTrabalhadas) || 0;
+      (a.responsaveisNomes || []).forEach((n) => {
+        if (!mapaPart[n]) mapaPart[n] = 0;
+        mapaPart[n] += h;
+      });
+    });
+    const rankingPart = Object.entries(mapaPart).sort((a, b) => b[1] - a[1]);
+
     return `
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Atividades</div>
+          <div class="kpi-value">${lista.length}</div>
+          <div class="kpi-sub">Registros consolidados no Diário de Campo</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Horas Registradas</div>
+          <div class="kpi-value">${String(Number(totalHoras.toFixed(1))).replace('.', ',')} h</div>
+          <div class="kpi-sub">Soma das atividades executadas</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Participantes</div>
+          <div class="kpi-value">${rankingPart.length}</div>
+          <div class="kpi-sub">Membros vinculados às atividades</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Anexos</div>
+          <div class="kpi-value">${totalAnexos}</div>
+          <div class="kpi-sub">Arquivos e registros anexados</div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">🚜 Gestão de Atividades e Serviços Rurais</div>
+            <div class="card-title">🚜 Diário de Campo — Relatório Consolidado de Atividades</div>
             <div style="font-size:0.78rem; color:var(--slate-500);">
-              ${isAdmin ? '👑 Modo Admin: edição e exclusão liberadas para qualquer atividade lançada.' : canCreate ? '🛠️ Modo Colaborador: você pode cadastrar novas atividades; edição/exclusão restrita ao Admin.' : '👁️ Modo Leitor: visualização das atividades executadas.'}
+              ${isAdmin ? '👑 Modo Admin: edição e exclusão liberadas para qualquer atividade lançada.' : canCreate ? '🛠️ Modo Colaborador: você pode cadastrar novas atividades; edição/exclusão restrita ao Admin.' : '👁️ Modo Leitor: visualização e exportação PDF das atividades executadas.'}
             </div>
           </div>
-          ${
-            canCreate
-              ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalAtividade()">➕ Nova Atividade Rural</button>`
-              : `<span class="status-pill">👁️ Somente Leitura</span>`
-          }
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="AmadeusCore.exportarRelatorioAtividadesConsolidadoPDF()">
+              📄 Emitir PDF de Atividades
+            </button>
+            ${
+              canCreate
+                ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalAtividade()">➕ Nova Atividade Rural</button>`
+                : `<span class="status-pill">👁️ Somente Leitura</span>`
+            }
+          </div>
         </div>
 
         <div class="form-grid" style="background:var(--slate-50); padding:0.85rem; border-radius:var(--radius-md); border:1px solid var(--slate-200);">
           <div class="form-group">
-            <label>Pesquisar Atividade / Local / Trabalhador</label>
-            <input type="text" class="form-control" placeholder="Buscar por serviço, descrição, local ou pessoa..."
+            <label>Pesquisar Atividade / Local / Participante</label>
+            <input type="text" class="form-control" placeholder="Buscar por serviço, descrição, local ou participante..."
               value="${f.busca}" oninput="AmadeusCore.atvFilters.busca=this.value; AmadeusViews.renderMainContent();" />
           </div>
           <div class="form-group">
@@ -1167,13 +1207,12 @@ const AmadeusViews = {
           <table class="data-table">
             <thead>
               <tr>
-                <th>Data & Horário</th>
-                <th>Atividade / Descrição</th>
-                <th>Categoria</th>
+                <th>Data</th>
+                <th>Atividade</th>
                 <th>Localização</th>
-                <th>Equipe Vinculada</th>
+                <th>Participantes</th>
                 <th>Horas</th>
-                <th>Anexos</th>
+                <th>Registrado Por</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -1182,29 +1221,58 @@ const AmadeusViews = {
                 .map(
                   (a) => `
                 <tr>
-                  <td>
+                  <td style="white-space:nowrap;">
                     <strong>${core.formatDateBR(a.data)}</strong><br/>
-                    <span style="font-size:0.76rem; color:var(--slate-500);">${a.horaInicio || '08:00'} - ${a.horaFim || '12:00'}</span>
+                    <span style="font-size:0.74rem; color:var(--slate-500);">${a.categoria}</span>
                   </td>
                   <td>
                     <strong>${a.titulo}</strong>
-                    <div style="font-size:0.8rem; color:var(--slate-600); max-width:360px;">${a.descricao}</div>
+                    <div style="font-size:0.8rem; color:var(--slate-600); max-width:410px;">${a.descricao}</div>
                   </td>
-                  <td><span class="role-badge role-comum">${a.categoria}</span></td>
                   <td style="font-size:0.82rem;">📍 ${a.local}</td>
                   <td style="font-size:0.82rem;">👥 ${(a.responsaveisNomes || []).join(', ')}</td>
-                  <td><strong>${a.horasTrabalhadas} h</strong></td>
-                  <td>${(a.anexos || []).length} arq(s)</td>
+                  <td style="white-space:nowrap;"><strong>${String(a.horasTrabalhadas).replace('.', ',')} h</strong></td>
+                  <td style="font-size:0.82rem;">${a.registradoPor || 'Guilherme Dias Pereira'}</td>
                   <td>
                     ${
                       isAdmin
                         ? `
-                      <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAtividade('${a.id}')">✏️ Editar</button>
-                      <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirAtividade('${a.id}')">🗑️</button>
+                      <div style="display:flex; gap:0.25rem;">
+                        <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAtividade('${a.id}')">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirAtividade('${a.id}')">🗑️</button>
+                      </div>
                     `
                         : `<span style="font-size:0.75rem; color:var(--slate-500);">🔒 Admin</span>`
                     }
                   </td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⏱️ Carga Horária por Participante (${rankingPart.length} participantes)</div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Participante</th>
+                <th>Total no Período</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rankingPart
+                .map(
+                  ([nome, horas]) => `
+                <tr>
+                  <td><strong>${nome}</strong></td>
+                  <td><strong style="color:var(--green-800);">${String(Number(horas.toFixed(1))).replace('.', ',')} h</strong></td>
                 </tr>
               `
                 )
@@ -3113,6 +3181,16 @@ const AmadeusViews = {
         </p>
 
         <div class="schedule-cards-grid">
+          <div class="card" style="margin:0;">
+            <div class="card-title" style="margin-bottom:0.5rem;">🚜 Relatório de Atividades (Diário de Campo)</div>
+            <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
+              Relatório consolidado com todas as ${core.db.atividades.length} atividades, carga horária total (${String(Number(core.db.atividades.reduce((s, a) => s + (Number(a.horasTrabalhadas) || 0), 0).toFixed(1))).replace('.', ',')} h) e tabela de horas por participante.
+            </p>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="AmadeusCore.exportarRelatorioAtividadesConsolidadoPDF()">📄 Baixar PDF de Atividades</button>
+            </div>
+          </div>
+
           <div class="card" style="margin:0;">
             <div class="card-title" style="margin-bottom:0.5rem;">🌧️ Relatórios Pluviométricos (2025 & 2026)</div>
             <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
