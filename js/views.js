@@ -8,6 +8,9 @@ const AmadeusViews = {
 
   renderApp() {
     const core = window.AmadeusCore;
+    if (core && typeof core.normalizarUsuarios === 'function') {
+      core.normalizarUsuarios();
+    }
     const headerEl = document.getElementById('app-header');
     const sidebarEl = document.getElementById('app-sidebar');
     const mainEl = document.getElementById('app-main');
