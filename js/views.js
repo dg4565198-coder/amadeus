@@ -181,20 +181,16 @@ const AmadeusViews = {
 
   async submeterLoginGate(e) {
     e.preventDefault();
-    const u = document.getElementById('gate-user').value;
-    const p = document.getElementById('gate-pass').value;
-    if (window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled) {
-      await window.AmadeusCloud.pullFromFirebase(true);
-    }
-    window.AmadeusCore.login(u, p);
+    const uInput = document.getElementById('gate-user');
+    const pInput = document.getElementById('gate-pass');
+    const u = uInput ? uInput.value : '';
+    const p = pInput ? pInput.value : '';
+    await window.AmadeusCore.login(u, p);
   },
 
   async submeterSolicitacaoCadastro(e) {
     e.preventDefault();
-    if (window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled) {
-      await window.AmadeusCloud.pullFromFirebase(true);
-    }
-    const ok = window.AmadeusCore.solicitarCadastro({
+    const ok = await window.AmadeusCore.solicitarCadastro({
       nome: document.getElementById('cad-nome').value,
       login: document.getElementById('cad-login').value,
       email: document.getElementById('cad-email').value,
