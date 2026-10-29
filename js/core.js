@@ -19,12 +19,12 @@ const AmadeusCore = {
 
   // Filtros do Módulo Pluviométrico
   pluvFilters: {
-    ano: 'todos',
+    ano: '2026',
     mes: 'todos',
     pluviometro: 'todos',
     ultimos7Dias: false,
     busca: '',
-    modoGrafico: 'mensal' // 'diario' | 'mensal' | 'comparativo' | 'pluviometros'
+    modoGrafico: 'combo' // 'combo' | 'linha' | 'mensal' | 'comparativo' | 'pluviometros'
   },
 
   // Filtros de Atividades e Notas
@@ -674,23 +674,81 @@ const AmadeusCore = {
   },
 
   calcularResumoPluviometrico(registros) {
-    const totalRegistros = registros.length;
-    const acumuladoMm = registros.reduce((acc, r) => acc + (Number(r.mm) || 0), 0);
-    const diasComChuva = registros.filter((r) => Number(r.mm) > 0).length;
-    const diasZeroMm = registros.filter((r) => Number(r.mm) === 0).length;
+    const ordenados = [...registros].sort((a, b) => a.data.localeCompare(b.data));
+    const totalRegistros = ordenados.length;
+    const acumuladoMm = ordenados.reduce((acc, r) => acc + (Number(r.mm) || 0), 0);
+    const diasComChuva = ordenados.filter((r) => Number(r.mm) > 0).length;
+    const diasZeroMm = ordenados.filter((r) => Number(r.mm) === 0).length;
     const mediaPorDiaRegistrado = totalRegistros > 0 ? acumuladoMm / totalRegistros : 0;
     const mediaNosDiasChuvosos = diasComChuva > 0 ? acumuladoMm / diasComChuva : 0;
+    const frequenciaChuvaPct = totalRegistros > 0 ? (diasComChuva / totalRegistros) * 100 : 0;
 
     let maiorChuva = null;
-    for (const r of registros) {
+    for (const r of ordenados) {
       if (!maiorChuva || Number(r.mm) > Number(maiorChuva.mm)) {
         maiorChuva = r;
       }
     }
 
-    // Agregação mensal
+    // Série Diária + Soma Progressiva (Acumulado) + Média Móvel (7 leituras)
+    let somaProg = 0;
+    let seqSecaAtual = 0;
+    let maiorVeranicoLeituras = 0;
+    let chuvasUteisCount = 0; // >= 5 mm (chuva agronômica efetiva)
+    let chuvasUteisMm = 0;
+    let eventosModerados = 0; // 10 a 30 mm
+    let eventosFortes = 0; // > 30 mm
+    let eventosExtremos = 0; // >= 50 mm (alerta de escoamento superficial/erosão)
+
+    const serieDiariaAcumulada = ordenados.map((r, idx) => {
+      const mm = Number(r.mm) || 0;
+      somaProg += mm;
+
+      if (mm < 5) {
+        seqSecaAtual += 1;
+        if (seqSecaAtual > maiorVeranicoLeituras) maiorVeranicoLeituras = seqSecaAtual;
+      } else {
+        seqSecaAtual = 0;
+      }
+
+      if (mm >= 5) {
+        chuvasUteisCount += 1;
+        chuvasUteisMm += mm;
+      }
+      if (mm >= 10 && mm <= 30) eventosModerados += 1;
+      if (mm > 30) eventosFortes += 1;
+      if (mm >= 50) eventosExtremos += 1;
+
+      const janela = ordenados.slice(Math.max(0, idx - 6), idx + 1);
+      const mediaMovel7 = janela.reduce((s, x) => s + (Number(x.mm) || 0), 0) / janela.length;
+
+      return {
+        ...r,
+        mm,
+        acumulado: somaProg,
+        mediaMovel7
+      };
+    });
+
+    // Acumulado nos últimos 15 e 30 dias a partir da última leitura do filtro
+    let acum15d = 0;
+    let acum30d = 0;
+    let ultimaDataRef = null;
+    if (ordenados.length > 0) {
+      ultimaDataRef = ordenados[ordenados.length - 1].data;
+      const dtUlt = new Date(ultimaDataRef + 'T12:00:00');
+      const dt15 = new Date(dtUlt.getTime() - 14 * 86400000).toISOString().slice(0, 10);
+      const dt30 = new Date(dtUlt.getTime() - 29 * 86400000).toISOString().slice(0, 10);
+      for (const r of ordenados) {
+        const val = Number(r.mm) || 0;
+        if (r.data >= dt15 && r.data <= ultimaDataRef) acum15d += val;
+        if (r.data >= dt30 && r.data <= ultimaDataRef) acum30d += val;
+      }
+    }
+
+    //Agregação mensal
     const porMesMap = {};
-    for (const r of registros) {
+    for (const r of ordenados) {
       const anoMes = r.data.slice(0, 7);
       if (!porMesMap[anoMes]) {
         porMesMap[anoMes] = {
@@ -698,6 +756,7 @@ const AmadeusCore = {
           totalMm: 0,
           diasRegistrados: 0,
           diasChuvosos: 0,
+          diasChuvaUtil: 0,
           diasZero: 0,
           maiorMm: 0,
           registros: []
@@ -709,11 +768,63 @@ const AmadeusCore = {
       m.diasRegistrados += 1;
       if (val > 0) m.diasChuvosos += 1;
       else m.diasZero += 1;
+      if (val >= 5) m.diasChuvaUtil += 1;
       if (val > m.maiorMm) m.maiorMm = val;
       m.registros.push(r);
     }
 
     const serieMensal = Object.values(porMesMap).sort((a, b) => a.anoMes.localeCompare(b.anoMes));
+    const mesMaisChuvoso = serieMensal.reduce((best, cur) => (!best || cur.totalMm > best.totalMm ? cur : best), null);
+
+    // Diagnóstico Agronômico para Tomada de Decisão (SIPA)
+    let statusHidrico = {
+      nivel: 'Favorable',
+      cor: '#166534',
+      bg: '#dcfce7',
+      borda: '#86efac',
+      icone: '🟢',
+      titulo: 'Condição Hídrica Favorável ao Manejo',
+      resumo: 'Boa disponibilidade hídrica para desenvolvimento forrageiro e práticas culturais.'
+    };
+    if (acum30d < 35 || seqSecaAtual >= 8) {
+      statusHidrico = {
+        nivel: 'Alerta',
+        cor: '#991b1b',
+        bg: '#fee2e2',
+        borda: '#fca5a5',
+        icone: '🔴',
+        titulo: 'Restrição Hídrica / Estiagem Recente',
+        resumo: `Baixo volume acumulado nos últimos 30 dias (${acum30d.toFixed(1)} mm) e ${seqSecaAtual} leitura(s) consecutiva(s) sem chuva útil (< 5 mm).`
+      };
+    } else if (acum30d < 80 || seqSecaAtual >= 4) {
+      statusHidrico = {
+        nivel: 'Transicao',
+        cor: '#92400e',
+        bg: '#fef3c7',
+        borda: '#fcd34d',
+        icone: '🟡',
+        titulo: 'Atenção: Umidade Moderada / Transição',
+        resumo: `Acumulado recente de ${acum30d.toFixed(1)} mm (30d). Monitorar umidade na zona radicular antes de intervenções.`
+      };
+    }
+
+    const recomendacaoAdubacao =
+      acum15d >= 25 && seqSecaAtual <= 2
+        ? 'Janela favorável para adubação em cobertura e semeadura (umidade superficial adequada para incorporação mineral e redução de perdas por volatilização).'
+        : 'Recomenda-se aguardar evento de chuva útil (>= 10 mm) antes de aplicar adubação nitrogenada em cobertura para evitar perdas por volatilização.';
+
+    const recomendacaoPastagem =
+      acum30d >= 80
+        ? `Potencial de rebrota elevado (${acum30d.toFixed(1)} mm/30d). Manter rotação de piquetes e controlar altura de entrada/saída da forrageira.`
+        : acum30d >= 35
+        ? `Taxa de crescimento forrageiro moderada (${acum30d.toFixed(1)} mm/30d). Respeitar rigorosamente a altura residual pós-pastejo para proteger o solo.`
+        : `Crescimento forrageiro reduzido (${acum30d.toFixed(1)} mm/30d). Evitar superpastejo, ampliar período de descanso dos piquetes e prever suplementação.`;
+
+    const recomendacaoSolo =
+      eventosExtremos > 0
+        ? `Foram registrados ${eventosExtremos} evento(s) extremo(s) (>= 50 mm/dia, máx. ${maiorChuva ? Number(maiorChuva.mm).toFixed(1) : 0} mm). Inspecionar curvas de nível, cobertura morta do solo e pontos de enxurrada.`
+        : 'Sem picos críticos de erosão hídrica (>= 50 mm/dia) no recorte selecionado. Manter cobertura vegetal permanente do SIPA.';
+
     return {
       totalRegistros,
       acumuladoMm,
@@ -721,8 +832,25 @@ const AmadeusCore = {
       diasZeroMm,
       mediaPorDiaRegistrado,
       mediaNosDiasChuvosos,
+      frequenciaChuvaPct,
       maiorChuva,
-      serieMensal
+      serieMensal,
+      mesMaisChuvoso,
+      serieDiariaAcumulada,
+      chuvasUteisCount,
+      chuvasUteisMm,
+      eventosModerados,
+      eventosFortes,
+      eventosExtremos,
+      maiorVeranicoLeituras,
+      seqSecaAtual,
+      acum15d,
+      acum30d,
+      ultimaDataRef,
+      statusHidrico,
+      recomendacaoAdubacao,
+      recomendacaoPastagem,
+      recomendacaoSolo
     };
   },
 
