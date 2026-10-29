@@ -46,7 +46,57 @@ const AmadeusCore = {
 
   normalizarUsuarios() {
     if (!this.db) return;
-    if (!Array.isArray(this.db.usuarios)) {
+
+    // O Firebase Realtime Database omite chaves cujo valor é array vazio ([]).
+    // Garantimos que todas as coleções existam sempre como Arrays válidos:
+    const colecoesArray = [
+      'usuarios',
+      'pessoas',
+      'registrosBiometricos',
+      'atividades',
+      'agendamentos',
+      'animais',
+      'chuvas',
+      'anotacoes',
+      'publicacoesPortal',
+      'historicoExclusoes'
+    ];
+    colecoesArray.forEach((col) => {
+      if (!Array.isArray(this.db[col])) {
+        this.db[col] = this.db[col] && typeof this.db[col] === 'object' ? Object.values(this.db[col]) : [];
+      }
+    });
+
+    this.db.animais.forEach((a) => {
+      if (!Array.isArray(a.pesagens)) {
+        a.pesagens = a.pesagens && typeof a.pesagens === 'object' ? Object.values(a.pesagens) : [];
+      }
+    });
+
+    this.db.atividades.forEach((atv) => {
+      if (!Array.isArray(atv.responsaveisIds)) {
+        atv.responsaveisIds = [];
+      }
+    });
+
+    if (!this.db.producaoEstoqueFinanceiro || typeof this.db.producaoEstoqueFinanceiro !== 'object') {
+      this.db.producaoEstoqueFinanceiro = { producao: [], estoque: [], financeiro: [] };
+    } else {
+      ['producao', 'estoque', 'financeiro'].forEach((sub) => {
+        if (!Array.isArray(this.db.producaoEstoqueFinanceiro[sub])) {
+          this.db.producaoEstoqueFinanceiro[sub] =
+            this.db.producaoEstoqueFinanceiro[sub] && typeof this.db.producaoEstoqueFinanceiro[sub] === 'object'
+              ? Object.values(this.db.producaoEstoqueFinanceiro[sub])
+              : [];
+        }
+      });
+    }
+
+    if (!this.db.configuracoes || typeof this.db.configuracoes !== 'object') {
+      this.db.configuracoes = window.AMADEUS_SEED.getInitialDatabase().configuracoes;
+    }
+
+    if (this.db.usuarios.length === 0) {
       this.db.usuarios = window.AMADEUS_SEED.getInitialDatabase().usuarios;
     }
     this.db.usuarios.forEach((u) => {
