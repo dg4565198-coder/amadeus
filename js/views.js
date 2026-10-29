@@ -764,50 +764,69 @@ const AmadeusViews = {
           </div>
         </div>
 
-        <!-- Painel Gráfico Profissional (Combo Diário + Acumulado, Linha de Tendência, Mensal e Comparativo) -->
-        <div class="chart-container ${isFullscreen ? 'fullscreen' : ''}" id="pluv-chart-box" style="padding:1.25rem; border-radius:14px; box-shadow:var(--shadow-sm);">
-          <div class="card-header" style="margin-bottom:0.75rem; border-bottom:1px solid var(--slate-100); padding-bottom:0.75rem;">
+        <!-- Painel Gráfico Moderno de Telemetria Agroclimática -->
+        <div class="chart-container ${isFullscreen ? 'fullscreen' : ''}" id="pluv-chart-box"
+          style="padding:1.35rem; border-radius:16px; background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0; box-shadow:0 10px 25px -5px rgba(15, 23, 42, 0.06);">
+          <div class="card-header" style="margin-bottom:0.85rem; border-bottom:1px solid #e2e8f0; padding-bottom:0.85rem;">
             <div>
-              <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--green-700); margin-bottom:0.15rem;">
-                PRECIPITAÇÃO E EVOLUÇÃO HÍDRICA
+              <div style="display:inline-flex; align-items:center; gap:0.4rem; background:#dcfce7; color:#166534; padding:0.2rem 0.65rem; border-radius:999px; font-size:0.7rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.35rem;">
+                <span>📡 TELEMETRIA PLUVIOMÉTRICA SIPA</span>
+                <span>•</span>
+                <span>${f.somenteChuvosos ? 'SOMENTE DIAS CHUVOSOS' : 'SÉRIE COMPLETA'}</span>
               </div>
-              <div style="font-size:1.35rem; font-weight:800; color:var(--slate-900); font-family:Georgia, 'Times New Roman', serif; line-height:1.2;">
+              <div style="font-size:1.28rem; font-weight:800; color:#0f172a; letter-spacing:-0.01em; line-height:1.25;">
                 ${
                   f.modoGrafico === 'combo'
-                    ? 'Chuva diária + acumulado'
+                    ? 'Hidrograma Interativo: Precipitação Diária & Curva Acumulada'
                     : f.modoGrafico === 'linha'
-                    ? 'Curva de Precipitação Diária, Média Móvel e Limiares Agronômicos'
+                    ? 'Dinâmica Hídrica: Curva Suavizada, Média Móvel (7d) & Zonas de Decisão'
                     : f.modoGrafico === 'mensal'
-                    ? 'Distribuição Mensal Consolidada + Linha de Tendência'
+                    ? 'Balanço Mensal Consolidado & Frequência de Dias Chuvosos'
                     : f.modoGrafico === 'comparativo'
-                    ? 'Comparativo Pluviométrico 2025 × 2026 (Colunas + Linhas)'
-                    : 'Acumulado por Pluviômetro / Ponto de Coleta'
+                    ? 'Análise Comparativa Multi-Anual (2025 × 2026)'
+                    : 'Distribuição por Pluviômetro / Unidade Experimental'
                 }
               </div>
-              <div style="font-size:0.82rem; color:var(--slate-500); margin-top:0.15rem;">
-                ${
-                  f.modoGrafico === 'combo'
-                    ? 'Chuva de cada dia nas colunas e soma progressiva na linha. Clique em qualquer ponto ou coluna para inspecionar.'
-                    : f.modoGrafico === 'linha'
-                    ? 'Gráfico de linhas com precipitação diária, tendência suavizada (média móvel 7 leituras) e limiares para tomada de decisão.'
-                    : 'Clique em qualquer elemento do gráfico para consultar o detalhamento técnico.'
-                }
+              <div style="font-size:0.8rem; color:#64748b; margin-top:0.2rem;">
+                Passe o mouse (ou deslize o dedo no celular) sobre o gráfico para inspecionar cada leitura em tempo real.
               </div>
             </div>
-            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
-              <button class="btn btn-sm ${f.modoGrafico === 'combo' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'combo')">📊 Diária + Acumulado</button>
-              <button class="btn btn-sm ${f.modoGrafico === 'linha' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'linha')">📈 Gráfico de Linha (Tendência)</button>
-              <button class="btn btn-sm ${f.modoGrafico === 'mensal' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'mensal')">📅 Mensal</button>
-              <button class="btn btn-sm ${f.modoGrafico === 'comparativo' ? 'btn-primary' : 'btn-secondary'}"
-                onclick="AmadeusViews.setPluvFilter('modoGrafico', 'comparativo')">⚖️ Comparar 2025 × 2026</button>
-              <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.toggleChartFullscreen('pluv-chart')" style="border-color:var(--slate-300);">
-                ${isFullscreen ? '🗗 Sair da Tela Cheia' : '⛶ Tela cheia'}
+
+            <div style="display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center;">
+              <div style="display:inline-flex; background:#f1f5f9; padding:0.22rem; border-radius:10px; border:1px solid #cbd5e1; gap:0.2rem; flex-wrap:wrap;">
+                <button class="btn btn-sm ${f.modoGrafico === 'combo' ? 'btn-primary' : ''}"
+                  style="${f.modoGrafico === 'combo' ? 'border-radius:8px;' : 'background:transparent; color:#334155; border:none; border-radius:8px;'}"
+                  onclick="AmadeusViews.setPluvFilter('modoGrafico', 'combo')">📊 Hidrograma + Acumulado</button>
+                <button class="btn btn-sm ${f.modoGrafico === 'linha' ? 'btn-primary' : ''}"
+                  style="${f.modoGrafico === 'linha' ? 'border-radius:8px;' : 'background:transparent; color:#334155; border:none; border-radius:8px;'}"
+                  onclick="AmadeusViews.setPluvFilter('modoGrafico', 'linha')">📈 Curva de Linha &amp; Tendência</button>
+                <button class="btn btn-sm ${f.modoGrafico === 'mensal' ? 'btn-primary' : ''}"
+                  style="${f.modoGrafico === 'mensal' ? 'border-radius:8px;' : 'background:transparent; color:#334155; border:none; border-radius:8px;'}"
+                  onclick="AmadeusViews.setPluvFilter('modoGrafico', 'mensal')">📅 Mensal</button>
+                <button class="btn btn-sm ${f.modoGrafico === 'comparativo' ? 'btn-primary' : ''}"
+                  style="${f.modoGrafico === 'comparativo' ? 'border-radius:8px;' : 'background:transparent; color:#334155; border:none; border-radius:8px;'}"
+                  onclick="AmadeusViews.setPluvFilter('modoGrafico', 'comparativo')">⚖️ 2025 × 2026</button>
+              </div>
+
+              ${
+                f.modoGrafico === 'combo' || f.modoGrafico === 'linha'
+                  ? `
+                <button class="btn btn-sm ${f.somenteChuvosos ? 'btn-amber' : 'btn-secondary'}"
+                  style="border-radius:8px;"
+                  onclick="AmadeusViews.setPluvFilter('somenteChuvosos', ${!f.somenteChuvosos})"
+                  title="Alternar entre todos os dias monitorados ou apenas os dias em que choveu (> 0 mm)">
+                  ${f.somenteChuvosos ? '🌧️ Mostrando Só Dias c/ Chuva' : '🔎 Filtrar Só Dias c/ Chuva'}
+                </button>
+              `
+                  : ''
+              }
+
+              <button class="btn btn-sm btn-secondary" style="border-radius:8px;" onclick="AmadeusViews.toggleChartFullscreen('pluv-chart')">
+                ${isFullscreen ? '🗗 Sair' : '⛶ Tela cheia'}
               </button>
             </div>
           </div>
+
           ${this.renderGraficoPluviometrico(registros, resumo)}
         </div>
 
@@ -929,46 +948,181 @@ const AmadeusViews = {
     `;
   },
 
+  // Gera curva Bezier cúbica suave (monotone-safe) a partir de [{x, y}]
+  gerarCurvaSuaveSVG(pts, baseY = null) {
+    if (!pts || pts.length === 0) return { path: '', area: '' };
+    if (pts.length === 1) {
+      const p = pts[0];
+      return {
+        path: `M ${p.x.toFixed(1)},${p.y.toFixed(1)}`,
+        area: baseY !== null ? `M ${p.x.toFixed(1)},${baseY.toFixed(1)} L ${p.x.toFixed(1)},${p.y.toFixed(1)} L ${p.x.toFixed(1)},${baseY.toFixed(1)} Z` : ''
+      };
+    }
+    let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i];
+      const p1 = pts[i + 1];
+      const dx = (p1.x - p0.x) * 0.42;
+      const cx1 = p0.x + dx;
+      const cy1 = p0.y;
+      const cx2 = p1.x - dx;
+      const cy2 = p1.y;
+      d += ` C ${cx1.toFixed(1)},${cy1.toFixed(1)} ${cx2.toFixed(1)},${cy2.toFixed(1)} ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
+    }
+    const area =
+      baseY !== null
+        ? `${d} L ${pts[pts.length - 1].x.toFixed(1)},${baseY.toFixed(1)} L ${pts[0].x.toFixed(1)},${baseY.toFixed(1)} Z`
+        : '';
+    return { path: d, area };
+  },
+
+  destacarPontoPluv(idx) {
+    const lista = this._ultimaSerieGraficoPluv;
+    if (!lista || !lista[idx]) return;
+    const item = lista[idx];
+    const core = window.AmadeusCore;
+
+    const elData = document.getElementById('hud-pluv-data');
+    const elResp = document.getElementById('hud-pluv-resp');
+    const elDia = document.getElementById('hud-pluv-dia');
+    const elBadge = document.getElementById('hud-pluv-badge');
+    const elAcum = document.getElementById('hud-pluv-acum');
+    const elPct = document.getElementById('hud-pluv-pct');
+    const elMM7 = document.getElementById('hud-pluv-mm7');
+    const elRec = document.getElementById('hud-pluv-rec');
+
+    if (elData) elData.textContent = core.formatDateBR(item.data);
+    if (elResp) elResp.textContent = `${item.pluviometro} · Resp.: ${item.responsavel}`;
+    if (elDia) elDia.textContent = `${item.mm.toFixed(1)} mm`;
+    if (elBadge) {
+      if (item.mm === 0) {
+        elBadge.textContent = '☀️ Dia Seco (0 mm)';
+        elBadge.style.background = '#f1f5f9';
+        elBadge.style.color = '#475569';
+      } else if (item.mm < 5) {
+        elBadge.textContent = '🌦️ Chuva Leve (< 5 mm)';
+        elBadge.style.background = '#fef3c7';
+        elBadge.style.color = '#b45309';
+      } else if (item.mm < 50) {
+        elBadge.textContent = '🌱 Chuva Útil (Infiltração Ideal)';
+        elBadge.style.background = '#dcfce7';
+        elBadge.style.color = '#15803d';
+      } else {
+        elBadge.textContent = '⚠️ Evento Extremo (>= 50 mm)';
+        elBadge.style.background = '#fee2e2';
+        elBadge.style.color = '#b91c1c';
+      }
+    }
+    const totalPer = lista[lista.length - 1].acumulado || 1;
+    const pct = Math.min(100, (item.acumulado / totalPer) * 100);
+    if (elAcum) elAcum.textContent = `${item.acumulado.toFixed(1)} mm`;
+    if (elPct) elPct.textContent = `${pct.toFixed(1)}% do volume acumulado no período`;
+    if (elMM7) elMM7.textContent = `${item.mediaMovel7.toFixed(1)} mm`;
+    if (elRec) {
+      elRec.textContent =
+        item.mm >= 50
+          ? 'Alerta de enxurrada: vistoriar terraços e drenagem'
+          : item.mm >= 10
+          ? 'Umidade ótima p/ adubação e rebrota do pasto'
+          : item.mm >= 5
+          ? 'Chuva útil p/ manutenção da umidade superficial'
+          : 'Sem recarga hídrica significativa neste dia';
+    }
+
+    const line = document.getElementById('pluv-crosshair-line');
+    const dotA = document.getElementById('pluv-active-dot-acum');
+    const dotD = document.getElementById('pluv-active-dot-dia');
+    if (line && item._cx !== undefined) {
+      line.setAttribute('x1', item._cx);
+      line.setAttribute('x2', item._cx);
+      line.style.opacity = '1';
+    }
+    if (dotA && item._cx !== undefined && item._cyAcum !== undefined) {
+      dotA.setAttribute('cx', item._cx);
+      dotA.setAttribute('cy', item._cyAcum);
+      dotA.style.opacity = '1';
+    }
+    if (dotD && item._cx !== undefined && item._cyDia !== undefined) {
+      dotD.setAttribute('cx', item._cx);
+      dotD.setAttribute('cy', item._cyDia);
+      dotD.style.opacity = '1';
+    }
+  },
+
   renderGraficoPluviometrico(registros, resumo) {
     const core = window.AmadeusCore;
     const f = core.pluvFilters;
     const modo = f.modoGrafico || 'combo';
-    const serie = resumo.serieDiariaAcumulada || [];
+    const serieCompleta = resumo.serieDiariaAcumulada || [];
+    const serie = f.somenteChuvosos ? serieCompleta.filter((d) => d.mm > 0) : serieCompleta;
+    this._ultimaSerieGraficoPluv = serie;
+
+    // Barra Interativa de Telemetria em Tempo Real (HUD Superior)
+    const ult = serie.length > 0 ? serie[serie.length - 1] : null;
+    const hudHtml = ult
+      ? `
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:0.65rem; margin-bottom:0.95rem; background:#f8fafc; padding:0.75rem; border-radius:12px; border:1px solid #e2e8f0;">
+        <div style="background:#ffffff; padding:0.6rem 0.8rem; border-radius:10px; border:1px solid #e2e8f0; border-left:4px solid #334155;">
+          <div style="font-size:0.68rem; font-weight:700; text-transform:uppercase; color:#64748b;">📅 Leitura em Foco</div>
+          <div id="hud-pluv-data" style="font-size:1.05rem; font-weight:800; color:#0f172a;">${core.formatDateBR(ult.data)}</div>
+          <div id="hud-pluv-resp" style="font-size:0.72rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ult.pluviometro} · Resp.: ${ult.responsavel}</div>
+        </div>
+        <div style="background:#ffffff; padding:0.6rem 0.8rem; border-radius:10px; border:1px solid #e2e8f0; border-left:4px solid #0284c7;">
+          <div style="font-size:0.68rem; font-weight:700; text-transform:uppercase; color:#64748b;">🌧️ Precipitação Diária</div>
+          <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+            <span id="hud-pluv-dia" style="font-size:1.1rem; font-weight:800; color:#0284c7;">${ult.mm.toFixed(1)} mm</span>
+            <span id="hud-pluv-badge" style="font-size:0.68rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:999px; background:#dcfce7; color:#15803d;">
+              ${ult.mm === 0 ? '☀️ Dia Seco' : ult.mm >= 5 ? '🌱 Chuva Útil' : '🌦️ Chuva Leve'}
+            </span>
+          </div>
+          <div style="font-size:0.71rem; color:#64748b;">Média chuvosa: <strong>${resumo.mediaNosDiasChuvosos.toFixed(1)} mm</strong></div>
+        </div>
+        <div style="background:#ffffff; padding:0.6rem 0.8rem; border-radius:10px; border:1px solid #e2e8f0; border-left:4px solid #10b981;">
+          <div style="font-size:0.68rem; font-weight:700; text-transform:uppercase; color:#64748b;">📈 Acumulado Progressivo</div>
+          <div id="hud-pluv-acum" style="font-size:1.1rem; font-weight:800; color:#065f46;">${ult.acumulado.toFixed(1)} mm</div>
+          <div id="hud-pluv-pct" style="font-size:0.71rem; color:#64748b;">100% do volume acumulado no período</div>
+        </div>
+        <div style="background:#ffffff; padding:0.6rem 0.8rem; border-radius:10px; border:1px solid #e2e8f0; border-left:4px solid #8b5cf6;">
+          <div style="font-size:0.68rem; font-weight:700; text-transform:uppercase; color:#64748b;">〰️ Média Móvel (7d) &amp; Manejo</div>
+          <div id="hud-pluv-mm7" style="font-size:1.05rem; font-weight:800; color:#6d28d9;">${ult.mediaMovel7.toFixed(1)} mm</div>
+          <div id="hud-pluv-rec" style="font-size:0.71rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Passe o cursor no gráfico p/ diagnóstico</div>
+        </div>
+      </div>
+    `
+      : '';
 
     // ========================================================================
-    // MODO 1: COMBO "CHUVA DIÁRIA + ACUMULADO" (Colunas Azuis + Linha Verde Progressiva)
+    // MODO 1: HIDROGRAMA MODERNO (Colunas por Intensidade + Curva Bezier Acumulada)
     // ========================================================================
     if (modo === 'combo') {
       if (serie.length === 0) {
         return `<p style="padding:1rem; color:var(--slate-500);">Nenhum registro para o filtro selecionado.</p>`;
       }
 
-      const W = 980;
-      const H = 370;
-      const padL = 58;
+      const W = 1000;
+      const H = 380;
+      const padL = 56;
       const padR = 64;
-      const padT = 38;
-      const padB = 48;
+      const padT = 40;
+      const padB = 46;
       const plotW = W - padL - padR;
       const plotH = H - padT - padB;
 
-      const maxDiaRaw = Math.max(20, ...serie.map((d) => d.mm));
-      const maxDia = Math.ceil(maxDiaRaw / 50) * 50; // Ex.: 150 -> 200 (ou 150)
-      const scaleDiaMax = maxDia <= 150 ? Math.max(50, Math.ceil((maxDiaRaw * 1.15) / 50) * 50) : Math.ceil((maxDiaRaw * 1.15) / 50) * 50;
+      const maxDiaRaw = Math.max(25, ...serie.map((d) => d.mm));
+      const scaleDiaMax = Math.ceil((maxDiaRaw * 1.18) / 25) * 25;
 
       const maxAcumRaw = Math.max(50, serie[serie.length - 1].acumulado);
-      const stepAcum = maxAcumRaw <= 200 ? 50 : maxAcumRaw <= 500 ? 100 : maxAcumRaw <= 1000 ? 250 : 400;
-      const scaleAcumMax = Math.ceil((maxAcumRaw * 1.12) / stepAcum) * stepAcum;
+      const stepAcum = maxAcumRaw <= 200 ? 50 : maxAcumRaw <= 500 ? 100 : maxAcumRaw <= 1000 ? 200 : 400;
+      const scaleAcumMax = Math.ceil((maxAcumRaw * 1.1) / stepAcum) * stepAcum;
 
       const n = serie.length;
       const stepX = plotW / Math.max(1, n);
-      const barW = Math.max(4, Math.min(14, stepX * 0.58));
+      const barW = Math.max(5, Math.min(24, stepX * 0.66));
 
       const yDia = (val) => padT + plotH - (Math.min(val, scaleDiaMax) / scaleDiaMax) * plotH;
       const yAcum = (val) => padT + plotH - (Math.min(val, scaleAcumMax) / scaleAcumMax) * plotH;
       const xPos = (i) => padL + i * stepX + stepX / 2;
 
-      // 4 divisões horizontais (0%, 25%, 50%, 75%, 100%)
       const ticks = [0, 0.25, 0.5, 0.75, 1];
       const gridLines = ticks
         .map((t) => {
@@ -977,156 +1131,217 @@ const AmadeusViews = {
           const vAcum = Math.round(scaleAcumMax * t);
           return `
             <line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"
-              stroke="${t === 0 ? '#cbd5e1' : '#e2e8f0'}" stroke-width="${t === 0 ? '1.5' : '1'}"
-              ${t > 0 ? 'stroke-dasharray="5,5"' : ''} />
-            <text x="${padL - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" font-weight="800" fill="#0369a1">${vDia}</text>
-            <text x="${W - padR + 10}" y="${(y + 4).toFixed(1)}" text-anchor="start" font-size="11.5" font-weight="800" fill="#14532d">${vAcum}</text>
+              stroke="${t === 0 ? '#cbd5e1' : '#f1f5f9'}" stroke-width="${t === 0 ? '1.8' : '1.2'}" />
+            <text x="${padL - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="#0284c7">${vDia}</text>
+            <text x="${W - padR + 10}" y="${(y + 4).toFixed(1)}" text-anchor="start" font-size="11" font-weight="700" fill="#059669">${vAcum}</text>
           `;
         })
         .join('');
 
-      // Linha tracejada âmbar: Média por dia chuvoso
+      // Linha de Média por Dia Chuvoso com Badge moderno na direita (sem colidir com barras!)
       const mediaChuv = resumo.mediaNosDiasChuvosos || 0;
       const yMedia = yDia(mediaChuv);
       const linhaMedia =
         mediaChuv > 0
           ? `
           <line x1="${padL}" y1="${yMedia.toFixed(1)}" x2="${W - padR}" y2="${yMedia.toFixed(1)}"
-            stroke="#d97706" stroke-width="1.4" stroke-dasharray="6,5" />
-          <text x="${padL + 14}" y="${Math.max(padT + 14, yMedia - 6).toFixed(1)}"
-            font-size="11.5" font-weight="800" fill="#b45309">
-            Média por dia chuvoso: ${mediaChuv.toFixed(1)} mm
+            stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.85" />
+          <rect x="${W - padR - 178}" y="${Math.max(padT + 4, yMedia - 18).toFixed(1)}" width="172" height="19" rx="9.5"
+            fill="#fffbeb" stroke="#fcd34d" stroke-width="1" />
+          <text x="${W - padR - 92}" y="${Math.max(padT + 17, yMedia - 5).toFixed(1)}" text-anchor="middle"
+            font-size="10.5" font-weight="800" fill="#b45309">
+            Média chuvosa: ${mediaChuv.toFixed(1)} mm
           </text>
         `
           : '';
 
-      // Polígono de área sombreada e caminho da linha acumulada
-      const pts = serie.map((d, i) => `${xPos(i).toFixed(1)},${yAcum(d.acumulado).toFixed(1)}`);
-      const areaPoints = `${xPos(0).toFixed(1)},${(padT + plotH).toFixed(1)} ${pts.join(' ')} ${xPos(n - 1).toFixed(1)},${(padT + plotH).toFixed(1)}`;
-      const polylinePoints = pts.join(' ');
+      // Coordenadas e curva Bezier suave para o Acumulado
+      const ptsAcum = serie.map((d, i) => {
+        const cx = xPos(i);
+        const cyA = yAcum(d.acumulado);
+        const cyD = yDia(d.mm);
+        d._cx = cx;
+        d._cyAcum = cyA;
+        d._cyDia = cyD;
+        return { x: cx, y: cyA };
+      });
+      const curvaAcum = this.gerarCurvaSuaveSVG(ptsAcum, padT + plotH);
 
-      // Colunas de chuva diária
+      // Identifica os 3 maiores picos para destacar com Callout Badges limpos
+      const topIds = new Set(
+        [...serie]
+          .filter((d) => d.mm >= 25)
+          .sort((a, b) => b.mm - a.mm)
+          .slice(0, 3)
+          .map((d) => d.id)
+      );
+
+      // Colunas de Chuva Diária codificadas por intensidade + zona invisível de hover amplo
       const colunasSvg = serie
         .map((d, i) => {
           const cx = xPos(i);
           const bx = cx - barW / 2;
-          const hBar = d.mm > 0 ? Math.max(4, ((d.mm / scaleDiaMax) * plotH)) : 2.5;
+          const hBar = d.mm > 0 ? Math.max(5, (d.mm / scaleDiaMax) * plotH) : 0;
           const by = padT + plotH - hBar;
-          const rx = Math.min(4, barW / 2);
-          const dataBR = core.formatDateBR(d.data);
+          const rx = Math.min(5, barW / 2);
+          const gradId = d.mm >= 50 ? 'url(#barAlertGrad)' : d.mm >= 10 ? 'url(#barOceanGrad)' : 'url(#barSkyGrad)';
+          const isTop = topIds.has(d.id);
+          const mostrarValorBarra = isTop || (f.somenteChuvosos && n <= 35 && d.mm > 0);
+
           return `
-            <g style="cursor:pointer;" onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
-              <title>${dataBR} — Chuva do dia: ${d.mm.toFixed(1)} mm | Acumulado: ${d.acumulado.toFixed(1)} mm (${d.responsavel})</title>
-              <rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${barW.toFixed(1)}" height="${hBar.toFixed(1)}"
-                rx="${rx.toFixed(1)}" fill="${d.mm > 0 ? 'url(#barBlueGrad)' : '#94a3b8'}" opacity="${d.mm > 0 ? '0.95' : '0.55'}" />
+            <g style="cursor:pointer;"
+              onmouseenter="AmadeusViews.destacarPontoPluv(${i})"
+              ontouchstart="AmadeusViews.destacarPontoPluv(${i})"
+              onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
+              <!-- Faixa invisível para facilitar hover/toque em qualquer altura da coluna -->
+              <rect x="${(cx - stepX / 2).toFixed(1)}" y="${padT}" width="${stepX.toFixed(1)}" height="${plotH}" fill="transparent" />
+              ${
+                d.mm > 0
+                  ? `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${barW.toFixed(1)}" height="${hBar.toFixed(1)}"
+                      rx="${rx.toFixed(1)}" fill="${gradId}" filter="url(#softShadow)" />`
+                  : `<circle cx="${cx.toFixed(1)}" cy="${(padT + plotH - 2).toFixed(1)}" r="1.5" fill="#cbd5e1" />`
+              }
+              ${
+                mostrarValorBarra
+                  ? `
+                  <rect x="${(cx - 22).toFixed(1)}" y="${Math.max(padT + 2, by - 20).toFixed(1)}" width="44" height="16" rx="6"
+                    fill="${d.mm >= 50 ? '#fef2f2' : '#f0f9ff'}" stroke="${d.mm >= 50 ? '#fca5a5' : '#bae6fd'}" stroke-width="1" />
+                  <text x="${cx.toFixed(1)}" y="${Math.max(padT + 13, by - 9).toFixed(1)}" text-anchor="middle"
+                    font-size="9.5" font-weight="800" fill="${d.mm >= 50 ? '#dc2626' : '#0369a1'}">
+                    ${d.mm.toFixed(0)} mm
+                  </text>
+                `
+                  : ''
+              }
             </g>
           `;
         })
         .join('');
 
-      // Marcadores circulares na linha de acumulado
-      const mostrarTodosPontos = n <= 95;
-      const pontosSvg = serie
+      // Marcadores elegantes na curva de acumulado APENAS nos dias com chuva significativa (>= 10 mm) e início/fim
+      const pontosChaveSvg = serie
         .map((d, i) => {
-          if (!mostrarTodosPontos && i % 2 !== 0 && i !== n - 1 && d.mm === 0) return '';
-          const cx = xPos(i);
-          const cy = yAcum(d.acumulado);
-          const dataBR = core.formatDateBR(d.data);
+          if (d.mm < 10 && i !== 0 && i !== n - 1) return '';
           return `
-            <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.2"
-              fill="#ffffff" stroke="#14532d" stroke-width="2.6" style="cursor:pointer;"
-              onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
-              <title>${dataBR} — Acumulado progressivo: ${d.acumulado.toFixed(1)} mm (Chuva no dia: ${d.mm.toFixed(1)} mm)</title>
-            </circle>
+            <circle cx="${d._cx.toFixed(1)}" cy="${d._cyAcum.toFixed(1)}" r="${i === n - 1 ? '5' : '3.6'}"
+              fill="#ffffff" stroke="#059669" stroke-width="2.5" style="pointer-events:none;" />
           `;
         })
         .join('');
 
-      // Rótulos do eixo X (aprox. 7 a 8 datas distribuídas uniformemente)
-      const qtdLabels = Math.min(n, 7);
+      // Rótulos do eixo X
+      const qtdLabels = Math.min(n, 8);
       const labelsX = [];
       for (let k = 0; k < qtdLabels; k++) {
         const idx = qtdLabels === 1 ? 0 : Math.round((k * (n - 1)) / (qtdLabels - 1));
         const d = serie[idx];
         const cx = xPos(idx);
-        const label = f.ano === 'todos' ? `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}/${d.data.slice(2, 4)}` : `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}`;
+        const label =
+          f.ano === 'todos'
+            ? `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}/${d.data.slice(2, 4)}`
+            : `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}`;
         labelsX.push(
-          `<text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#64748b">${label}</text>`
+          `<text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">${label}</text>`
         );
       }
 
+      const ultPt = serie[n - 1];
+
       return `
-        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;">
-          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:580px; height:auto; display:block; background:linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border-radius:12px;">
+        ${hudHtml}
+        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:14px; border:1px solid #e2e8f0; background:#ffffff; padding:0.5rem;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:560px; height:auto; display:block; user-select:none;">
             <defs>
-              <linearGradient id="barBlueGrad" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="barSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#0284c7" />
+              </linearGradient>
+              <linearGradient id="barOceanGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#0284c7" />
-                <stop offset="100%" stop-color="#0369a1" />
+                <stop offset="100%" stop-color="#1d4ed8" />
               </linearGradient>
-              <linearGradient id="acumAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#15803d" stop-opacity="0.22" />
-                <stop offset="100%" stop-color="#15803d" stop-opacity="0.02" />
+              <linearGradient id="barAlertGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f97316" />
+                <stop offset="100%" stop-color="#dc2626" />
               </linearGradient>
+              <linearGradient id="acumModernArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.28" />
+                <stop offset="65%" stop-color="#10b981" stop-opacity="0.08" />
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
+              </linearGradient>
+              <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.12" />
+              </filter>
+              <filter id="glowLine" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#059669" flood-opacity="0.25" />
+              </filter>
             </defs>
 
-            <!-- Títulos dos Eixos Y (Esquerda: Chuva Diária | Direita: Acumulado) -->
-            <text x="${padL}" y="22" text-anchor="start" font-size="12" font-weight="800" letter-spacing="0.04em" fill="#0369a1">
-              CHUVA DIÁRIA (mm)
+            <!-- Títulos dos Eixos Y -->
+            <text x="${padL}" y="22" text-anchor="start" font-size="11" font-weight="800" letter-spacing="0.06em" fill="#0284c7">
+              ▊ CHUVA DIÁRIA (mm)
             </text>
-            <text x="${W - padR}" y="22" text-anchor="end" font-size="12" font-weight="800" letter-spacing="0.04em" fill="#14532d">
-              ACUMULADO (mm)
+            <text x="${W - padR}" y="22" text-anchor="end" font-size="11" font-weight="800" letter-spacing="0.06em" fill="#059669">
+              〰️ SOMA ACUMULADA (mm)
             </text>
 
             ${gridLines}
+
+            <!-- Área Sombreada e Curva Suave Bezier do Acumulado -->
+            <path d="${curvaAcum.area}" fill="url(#acumModernArea)" />
+            <path d="${curvaAcum.path}" fill="none" stroke="#059669" stroke-width="3.4" stroke-linecap="round" filter="url(#glowLine)" />
+
             ${linhaMedia}
 
-            <!-- Área sombreada sob a curva de acumulado -->
-            <polygon points="${areaPoints}" fill="url(#acumAreaGrad)" />
+            <!-- Linha Guia Crosshair Interativa -->
+            <line id="pluv-crosshair-line" x1="${ultPt._cx.toFixed(1)}" y1="${padT}" x2="${ultPt._cx.toFixed(1)}" y2="${padT + plotH}"
+              stroke="#64748b" stroke-width="1.3" stroke-dasharray="4,4" style="opacity:0; pointer-events:none; transition:opacity 0.15s;" />
 
-            <!-- Colunas de Chuva Diária -->
+            <!-- Colunas Diárias Interativas -->
             ${colunasSvg}
 
-            <!-- Linha contínua de Soma Progressiva (Acumulado) -->
-            <polyline fill="none" stroke="#14532d" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"
-              points="${polylinePoints}" />
+            <!-- Marcadores Chave da Curva Acumulada -->
+            ${pontosChaveSvg}
 
-            <!-- Pontos circulares da curva de acumulado -->
-            ${pontosSvg}
+            <!-- Ponto Ativo no Hover -->
+            <circle id="pluv-active-dot-acum" cx="${ultPt._cx.toFixed(1)}" cy="${ultPt._cyAcum.toFixed(1)}" r="6.5"
+              fill="#10b981" stroke="#ffffff" stroke-width="3" filter="url(#softShadow)" style="opacity:0; pointer-events:none;" />
 
-            <!-- Datas do eixo X -->
+            <!-- Datas Eixo X -->
             ${labelsX.join('')}
           </svg>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-top:0.65rem; font-size:0.78rem; color:var(--slate-600);">
-          <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
-            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:12px; height:12px; border-radius:3px; background:#0284c7; display:inline-block;"></span> <strong>Colunas Azuis:</strong> Chuva diária (mm)</span>
-            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:14px; height:3px; background:#14532d; display:inline-block;"></span> <strong>Linha Verde:</strong> Soma progressiva acumulada (${resumo.acumuladoMm.toFixed(1)} mm)</span>
-            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:14px; height:2px; border-top:2px dashed #d97706; display:inline-block;"></span> <strong>Tracejado Âmbar:</strong> Média por dia chuvoso (${mediaChuv.toFixed(1)} mm)</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-top:0.75rem; font-size:0.77rem; color:#475569;">
+          <div style="display:flex; gap:0.9rem; flex-wrap:wrap; align-items:center;">
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:11px; height:11px; border-radius:3px; background:#38bdf8; display:inline-block;"></span> Leve (&lt; 10 mm)</span>
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:11px; height:11px; border-radius:3px; background:#0284c7; display:inline-block;"></span> Chuva Útil (10–49 mm)</span>
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:11px; height:11px; border-radius:3px; background:#ef4444; display:inline-block;"></span> Extrema (&ge; 50 mm)</span>
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:16px; height:3.5px; border-radius:2px; background:#059669; display:inline-block;"></span> Curva Acumulada (${resumo.acumuladoMm.toFixed(1)} mm)</span>
           </div>
-          <span>💡 Toque em qualquer ponto ou coluna para abrir o laudo da leitura</span>
+          <span style="color:#64748b; font-weight:600;">💡 Passe o cursor para telemetria ao vivo ou clique para abrir o laudo</span>
         </div>
       `;
     }
 
     // ========================================================================
-    // MODO 2: GRÁFICO DE LINHA ANALÍTICO (Precipitação Diária + Média Móvel 7d + Limiares)
+    // MODO 2: GRÁFICO DE LINHA MODERNO (Curva Suavizada + Média Móvel 7d + Zonas SIPA)
     // ========================================================================
     if (modo === 'linha') {
       if (serie.length === 0) {
         return `<p style="padding:1rem; color:var(--slate-500);">Nenhum registro para o filtro selecionado.</p>`;
       }
 
-      const W = 980;
-      const H = 370;
-      const padL = 58;
-      const padR = 45;
-      const padT = 38;
-      const padB = 48;
+      const W = 1000;
+      const H = 380;
+      const padL = 56;
+      const padR = 46;
+      const padT = 40;
+      const padB = 46;
       const plotW = W - padL - padR;
       const plotH = H - padT - padB;
 
-      const maxDiaRaw = Math.max(25, ...serie.map((d) => d.mm));
+      const maxDiaRaw = Math.max(30, ...serie.map((d) => d.mm));
       const scaleMax = Math.ceil((maxDiaRaw * 1.15) / 25) * 25;
       const n = serie.length;
       const stepX = plotW / Math.max(1, n - 1);
@@ -1140,35 +1355,76 @@ const AmadeusViews = {
           const v = Math.round(scaleMax * t);
           return `
             <line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"
-              stroke="${t === 0 ? '#cbd5e1' : '#e2e8f0'}" stroke-width="${t === 0 ? '1.5' : '1'}"
-              ${t > 0 ? 'stroke-dasharray="5,5"' : ''} />
-            <text x="${padL - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" font-weight="800" fill="#0369a1">${v} mm</text>
+              stroke="${t === 0 ? '#cbd5e1' : '#f1f5f9'}" stroke-width="${t === 0 ? '1.8' : '1.2'}" />
+            <text x="${padL - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="#0284c7">${v} mm</text>
           `;
         })
         .join('');
 
-      // Limiares agronômicos: 5 mm (Chuva útil) e 50 mm (Risco de escoamento superficial)
       const y5 = yVal(5);
-      const y50 = scaleMax >= 50 ? yVal(50) : null;
+      const y50 = scaleMax >= 50 ? yVal(50) : padT;
 
-      const ptsDiario = serie.map((d, i) => `${xPos(i).toFixed(1)},${yVal(d.mm).toFixed(1)}`);
-      const ptsMedia7 = serie.map((d, i) => `${xPos(i).toFixed(1)},${yVal(d.mediaMovel7).toFixed(1)}`);
-      const areaDiario = `${xPos(0).toFixed(1)},${(padT + plotH).toFixed(1)} ${ptsDiario.join(' ')} ${xPos(n - 1).toFixed(1)},${(padT + plotH).toFixed(1)}`;
+      const ptsDia = serie.map((d, i) => {
+        const cx = xPos(i);
+        const cy = yVal(d.mm);
+        d._cx = cx;
+        d._cyDia = cy;
+        d._cyAcum = yVal(d.mediaMovel7);
+        return { x: cx, y: cy };
+      });
+      const ptsMM7 = serie.map((d, i) => ({ x: xPos(i), y: yVal(d.mediaMovel7) }));
 
-      const pontosInterativos = serie
+      const curvaDia = this.gerarCurvaSuaveSVG(ptsDia, padT + plotH);
+      const curvaMM7 = this.gerarCurvaSuaveSVG(ptsMM7, null);
+
+      const zonasFundo = `
+        <!-- Zona Ideal de Infiltração (5 a 50 mm) -->
+        <rect x="${padL}" y="${y50.toFixed(1)}" width="${plotW}" height="${Math.max(0, y5 - y50).toFixed(1)}"
+          fill="#dcfce7" opacity="0.28" />
+        <line x1="${padL}" y1="${y5.toFixed(1)}" x2="${W - padR}" y2="${y5.toFixed(1)}"
+          stroke="#10b981" stroke-width="1.3" stroke-dasharray="5,4" />
+        <text x="${W - padR - 8}" y="${(y5 - 5).toFixed(1)}" text-anchor="end" font-size="10" font-weight="800" fill="#059669">
+          🌱 Limiar Chuva Útil (5 mm)
+        </text>
+        ${
+          scaleMax >= 50
+            ? `
+          <line x1="${padL}" y1="${y50.toFixed(1)}" x2="${W - padR}" y2="${y50.toFixed(1)}"
+            stroke="#ef4444" stroke-width="1.3" stroke-dasharray="6,4" />
+          <text x="${W - padR - 8}" y="${(y50 - 5).toFixed(1)}" text-anchor="end" font-size="10" font-weight="800" fill="#dc2626">
+            ⚠️ Limiar de Escoamento / Erosão (50 mm)
+          </text>
+        `
+            : ''
+        }
+      `;
+
+      const faixasHover = serie
         .map((d, i) => {
           const cx = xPos(i);
-          const cy = yVal(d.mm);
+          const wFaixa = Math.max(8, plotW / Math.max(1, n));
           const isPico = resumo.maiorChuva && d.id === resumo.maiorChuva.id && d.mm > 0;
-          const cor = d.mm >= 50 ? '#dc2626' : d.mm >= 5 ? '#0284c7' : '#94a3b8';
           return `
-            <g style="cursor:pointer;" onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
-              <title>${core.formatDateBR(d.data)} — Chuva: ${d.mm.toFixed(1)} mm | Média móvel (7 leituras): ${d.mediaMovel7.toFixed(1)} mm</title>
-              <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${isPico ? '6' : d.mm > 0 ? '4' : '2.5'}"
-                fill="${isPico ? '#dc2626' : '#ffffff'}" stroke="${cor}" stroke-width="2.4" />
+            <g style="cursor:pointer;"
+              onmouseenter="AmadeusViews.destacarPontoPluv(${i})"
+              ontouchstart="AmadeusViews.destacarPontoPluv(${i})"
+              onclick="AmadeusViews.inspecionarDiaChuva('${d.id}')">
+              <rect x="${(cx - wFaixa / 2).toFixed(1)}" y="${padT}" width="${wFaixa.toFixed(1)}" height="${plotH}" fill="transparent" />
+              ${
+                d.mm > 0
+                  ? `<circle cx="${cx.toFixed(1)}" cy="${d._cyDia.toFixed(1)}" r="${isPico ? '6' : '3.8'}"
+                      fill="${d.mm >= 50 ? '#ef4444' : '#ffffff'}" stroke="${d.mm >= 50 ? '#b91c1c' : '#0284c7'}" stroke-width="2.4" />`
+                  : ''
+              }
               ${
                 isPico
-                  ? `<text x="${cx.toFixed(1)}" y="${Math.max(16, cy - 10).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#dc2626">Pico: ${d.mm.toFixed(1)} mm (${d.data.slice(8, 10)}/${d.data.slice(5, 7)})</text>`
+                  ? `
+                  <rect x="${(cx - 58).toFixed(1)}" y="${Math.max(4, d._cyDia - 26).toFixed(1)}" width="116" height="18" rx="9"
+                    fill="#fef2f2" stroke="#fca5a5" stroke-width="1" />
+                  <text x="${cx.toFixed(1)}" y="${Math.max(16, d._cyDia - 14).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" fill="#dc2626">
+                    ⚡ Pico: ${d.mm.toFixed(1)} mm (${d.data.slice(8, 10)}/${d.data.slice(5, 7)})
+                  </text>
+                `
                   : ''
               }
             </g>
@@ -1176,104 +1432,166 @@ const AmadeusViews = {
         })
         .join('');
 
-      const qtdLabels = Math.min(n, 7);
+      const qtdLabels = Math.min(n, 8);
       const labelsX = [];
       for (let k = 0; k < qtdLabels; k++) {
         const idx = qtdLabels === 1 ? 0 : Math.round((k * (n - 1)) / (qtdLabels - 1));
         const d = serie[idx];
         const cx = xPos(idx);
         labelsX.push(
-          `<text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#64748b">${d.data.slice(8, 10)}/${d.data.slice(5, 7)}</text>`
+          `<text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">${d.data.slice(8, 10)}/${d.data.slice(5, 7)}</text>`
         );
       }
 
+      const ultPt = serie[n - 1];
+
       return `
-        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;">
-          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:580px; height:auto; display:block; background:linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border-radius:12px;">
+        ${hudHtml}
+        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:14px; border:1px solid #e2e8f0; background:#ffffff; padding:0.5rem;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:560px; height:auto; display:block; user-select:none;">
             <defs>
-              <linearGradient id="lineBlueArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25" />
-                <stop offset="100%" stop-color="#0284c7" stop-opacity="0.01" />
+              <linearGradient id="lineBlueModern" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0284c7" stop-opacity="0.30" />
+                <stop offset="100%" stop-color="#0284c7" stop-opacity="0.0" />
               </linearGradient>
             </defs>
 
-            <text x="${padL}" y="22" text-anchor="start" font-size="12" font-weight="800" fill="#0369a1">
-              CURVA DE PRECIPITAÇÃO DIÁRIA E TENDÊNCIA HÍDRICA (mm)
+            <text x="${padL}" y="22" text-anchor="start" font-size="11" font-weight="800" letter-spacing="0.06em" fill="#0284c7">
+              📈 CURVA DE PRECIPITAÇÃO DIÁRIA (mm) &amp; TENDÊNCIA DE UMIDADE (MÉDIA MÓVEL 7 LEITURAS)
             </text>
 
             ${gridLines}
+            ${zonasFundo}
 
-            <!-- Limiar de Chuva Útil (5 mm) -->
-            <line x1="${padL}" y1="${y5.toFixed(1)}" x2="${W - padR}" y2="${y5.toFixed(1)}"
-              stroke="#16a34a" stroke-width="1.3" stroke-dasharray="4,4" />
-            <text x="${W - padR - 6}" y="${(y5 - 5).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="700" fill="#15803d">
-              Limiar Chuva Útil (5 mm)
-            </text>
+            <!-- Área e Curva Suave da Precipitação Diária -->
+            <path d="${curvaDia.area}" fill="url(#lineBlueModern)" />
+            <path d="${curvaDia.path}" fill="none" stroke="#0284c7" stroke-width="2.8" stroke-linecap="round" />
 
-            ${
-              y50 !== null
-                ? `
-              <line x1="${padL}" y1="${y50.toFixed(1)}" x2="${W - padR}" y2="${y50.toFixed(1)}"
-                stroke="#dc2626" stroke-width="1.3" stroke-dasharray="6,4" />
-              <text x="${W - padR - 6}" y="${(y50 - 5).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="700" fill="#dc2626">
-                Alerta de Escoamento / Erosão (50 mm)
-              </text>
-            `
-                : ''
-            }
+            <!-- Curva Suave da Média Móvel de 7 Leituras (Roxa/Esmeralda) -->
+            <path d="${curvaMM7.path}" fill="none" stroke="#7c3aed" stroke-width="3.2" stroke-dasharray="7,4" stroke-linecap="round" />
 
-            <!-- Área e Linha de Precipitação Diária -->
-            <polygon points="${areaDiario}" fill="url(#lineBlueArea)" />
-            <polyline fill="none" stroke="#0284c7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"
-              points="${ptsDiario.join(' ')}" />
+            <!-- Crosshair -->
+            <line id="pluv-crosshair-line" x1="${ultPt._cx.toFixed(1)}" y1="${padT}" x2="${ultPt._cx.toFixed(1)}" y2="${padT + plotH}"
+              stroke="#64748b" stroke-width="1.3" stroke-dasharray="4,4" style="opacity:0; pointer-events:none;" />
 
-            <!-- Linha de Média Móvel (7 leituras) -->
-            <polyline fill="none" stroke="#166534" stroke-width="3" stroke-dasharray="8,4" stroke-linecap="round" stroke-linejoin="round"
-              points="${ptsMedia7.join(' ')}" />
+            ${faixasHover}
 
-            ${pontosInterativos}
+            <circle id="pluv-active-dot-dia" cx="${ultPt._cx.toFixed(1)}" cy="${ultPt._cyDia.toFixed(1)}" r="6.5"
+              fill="#0284c7" stroke="#ffffff" stroke-width="3" style="opacity:0; pointer-events:none;" />
+            <circle id="pluv-active-dot-acum" cx="${ultPt._cx.toFixed(1)}" cy="${ultPt._cyAcum.toFixed(1)}" r="5.5"
+              fill="#7c3aed" stroke="#ffffff" stroke-width="2.5" style="opacity:0; pointer-events:none;" />
+
             ${labelsX.join('')}
           </svg>
         </div>
 
-        <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.65rem; font-size:0.78rem; color:var(--slate-600);">
-          <span>🔵 <strong>Linha Contínua Azul:</strong> Precipitação diária (mm)</span>
-          <span>🟢 <strong>Linha Tracejada Verde:</strong> Média Móvel (7 leituras — tendência de umidade)</span>
-          <span>🌱 <strong>Limiar 5 mm:</strong> Chuva útil p/ ativação de adubação e infiltração radicular</span>
-          <span>⚠️ <strong>Limiar 50 mm:</strong> Alerta de escoamento superficial e erosão</span>
+        <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.75rem; font-size:0.77rem; color:#475569;">
+          <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:16px; height:3px; background:#0284c7; display:inline-block;"></span> <strong>Curva Azul:</strong> Precipitação diária (mm)</span>
+          <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:16px; height:3px; border-top:3px dashed #7c3aed; display:inline-block;"></span> <strong>Curva Roxa:</strong> Média Móvel (7 leituras — tendência hídrica)</span>
+          <span style="display:inline-flex; align-items:center; gap:0.35rem;"><span style="width:12px; height:12px; border-radius:3px; background:#dcfce7; border:1px solid #10b981; display:inline-block;"></span> <strong>Faixa Verde (5–50 mm):</strong> Zona ideal de infiltração sem erosão</span>
         </div>
       `;
     }
 
     // ========================================================================
-    // MODO 3: MENSAL CONSOLIDADO (Colunas + Linha de Evolução Mensal)
+    // MODO 3: MENSAL EXECUTIVO (SVG: Colunas Arredondadas + Curva de Dias Chuvosos)
     // ========================================================================
     if (modo === 'mensal') {
-      if (resumo.serieMensal.length === 0) {
+      const sm = resumo.serieMensal || [];
+      if (sm.length === 0) {
         return `<p style="padding:1rem; color:var(--slate-500);">Nenhum registro para o filtro selecionado.</p>`;
       }
-      const maxVal = Math.max(20, ...resumo.serieMensal.map((m) => m.totalMm));
+
+      const W = 960;
+      const H = 340;
+      const padL = 56;
+      const padR = 56;
+      const padT = 38;
+      const padB = 46;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      const maxMm = Math.ceil((Math.max(40, ...sm.map((m) => m.totalMm)) * 1.18) / 20) * 20;
+      const maxDias = Math.max(5, ...sm.map((m) => m.diasChuvosos)) + 2;
+      const n = sm.length;
+      const stepX = plotW / Math.max(1, n);
+      const barW = Math.min(58, stepX * 0.55);
+
+      const xPos = (i) => padL + i * stepX + stepX / 2;
+      const yMm = (v) => padT + plotH - (v / maxMm) * plotH;
+      const yDias = (v) => padT + plotH - (v / maxDias) * plotH;
+
+      const ptsDias = sm.map((m, i) => ({ x: xPos(i), y: yDias(m.diasChuvosos) }));
+      const curvaDias = this.gerarCurvaSuaveSVG(ptsDias, null);
+
+      const ticks = [0, 0.25, 0.5, 0.75, 1];
+      const gridSvg = ticks
+        .map((t) => {
+          const y = padT + plotH * (1 - t);
+          return `
+            <line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="${t === 0 ? '#cbd5e1' : '#f1f5f9'}" stroke-width="1.3" />
+            <text x="${padL - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="#0284c7">${Math.round(maxMm * t)}</text>
+            <text x="${W - padR + 10}" y="${(y + 4).toFixed(1)}" text-anchor="start" font-size="11" font-weight="700" fill="#d97706">${Math.round(maxDias * t)}d</text>
+          `;
+        })
+        .join('');
+
+      const barrasMensais = sm
+        .map((m, i) => {
+          const cx = xPos(i);
+          const hBar = Math.max(4, (m.totalMm / maxMm) * plotH);
+          const by = padT + plotH - hBar;
+          return `
+            <g style="cursor:pointer;" onclick="AmadeusViews.inspecionarMesChuva('${m.anoMes}')">
+              <rect x="${(cx - barW / 2).toFixed(1)}" y="${by.toFixed(1)}" width="${barW.toFixed(1)}" height="${hBar.toFixed(1)}"
+                rx="8" fill="url(#barOceanGrad)" />
+              <text x="${cx.toFixed(1)}" y="${(by - 8).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#0f172a">
+                ${m.totalMm.toFixed(1)} mm
+              </text>
+              <text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11.5" font-weight="700" fill="#475569">
+                ${m.anoMes}
+              </text>
+            </g>
+          `;
+        })
+        .join('');
+
+      const pontosDias = sm
+        .map((m, i) => {
+          const cx = xPos(i);
+          const cy = yDias(m.diasChuvosos);
+          return `
+            <g style="pointer-events:none;">
+              <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="5" fill="#ffffff" stroke="#d97706" stroke-width="3" />
+              <rect x="${(cx - 18).toFixed(1)}" y="${(cy + 8).toFixed(1)}" width="36" height="15" rx="6" fill="#fffbeb" stroke="#fcd34d" />
+              <text x="${cx.toFixed(1)}" y="${(cy + 19).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#b45309">${m.diasChuvosos}d</text>
+            </g>
+          `;
+        })
+        .join('');
+
       return `
-        <div class="chart-bars-wrap">
-          ${resumo.serieMensal
-            .map((m) => {
-              const hPct = Math.max(4, Math.round((m.totalMm / maxVal) * 100));
-              return `
-                <div class="chart-bar-col" onclick="AmadeusViews.inspecionarMesChuva('${m.anoMes}')"
-                  title="Clique para ver detalhes de ${m.anoMes}: ${m.totalMm.toFixed(1)} mm (${m.diasChuvosos} dias chuvosos de ${m.diasRegistrados} leituras)">
-                  <div class="chart-bar-val">${m.totalMm.toFixed(1)} mm</div>
-                  <div class="chart-bar-fill ${m.totalMm === 0 ? 'zero-rain' : ''}" style="height:${hPct}%;"></div>
-                  <div class="chart-bar-label">${m.anoMes}</div>
-                </div>
-              `;
-            })
-            .join('')}
+        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:14px; border:1px solid #e2e8f0; background:#ffffff; padding:0.5rem;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:540px; height:auto; display:block;">
+            <defs>
+              <linearGradient id="barOceanGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0ea5e9" />
+                <stop offset="100%" stop-color="#0369a1" />
+              </linearGradient>
+            </defs>
+            <text x="${padL}" y="22" text-anchor="start" font-size="11" font-weight="800" fill="#0284c7">▊ VOLUME MENSAL (mm)</text>
+            <text x="${W - padR}" y="22" text-anchor="end" font-size="11" font-weight="800" fill="#d97706">〰️ DIAS CHUVOSOS NO MÊS</text>
+            ${gridSvg}
+            ${barrasMensais}
+            <path d="${curvaDias.path}" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" />
+            ${pontosDias}
+          </svg>
         </div>
       `;
     }
 
     // ========================================================================
-    // MODO 4: COMPARATIVO 2025 × 2026
+    // MODO 4: COMPARATIVO 2025 × 2026 (SVG Moderno Lado a Lado)
     // ========================================================================
     if (modo === 'comparativo') {
       const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -1291,36 +1609,53 @@ const AmadeusViews = {
           cnt26: r26.length
         };
       });
-      const maxComp = Math.max(20, ...comp.map((c) => Math.max(c.mm25, c.mm26)));
+      const maxComp = Math.ceil((Math.max(40, ...comp.map((c) => Math.max(c.mm25, c.mm26))) * 1.15) / 25) * 25;
+
+      const W = 960;
+      const H = 330;
+      const padL = 52;
+      const padR = 32;
+      const padT = 36;
+      const padB = 44;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+      const stepX = plotW / 12;
 
       return `
-        <div style="display:flex; gap:1rem; font-size:0.8rem; margin-bottom:0.5rem; flex-wrap:wrap;">
-          <span>🟦 <strong>2025</strong> (Maio–Dezembro: 635,5 mm)</span>
-          <span>🟩 <strong>2026</strong> (Janeiro–Agosto: 705,0 mm)</span>
+        <div style="display:flex; gap:1.25rem; font-size:0.8rem; margin-bottom:0.6rem; flex-wrap:wrap;">
+          <span style="display:inline-flex; align-items:center; gap:0.4rem;"><span style="width:12px; height:12px; border-radius:3px; background:#0284c7; display:inline-block;"></span> <strong>2025 (Maio–Dez: 635,5 mm)</strong></span>
+          <span style="display:inline-flex; align-items:center; gap:0.4rem;"><span style="width:12px; height:12px; border-radius:3px; background:#10b981; display:inline-block;"></span> <strong>2026 (Jan–Ago: 705,0 mm)</strong></span>
         </div>
-        <div class="chart-bars-wrap">
-          ${comp
-            .map((c) => {
-              const h25 = c.cnt25 === 0 ? 2 : Math.max(5, Math.round((c.mm25 / maxComp) * 100));
-              const h26 = c.cnt26 === 0 ? 2 : Math.max(5, Math.round((c.mm26 / maxComp) * 100));
-              return `
-                <div class="chart-bar-col" style="min-width:54px;"
-                  onclick="AmadeusViews.mostrarComparativoMesModal('${c.mesNum}', '${c.nome}', ${c.mm25}, ${c.cnt25}, ${c.mm26}, ${c.cnt26})">
-                  <div style="display:flex; align-items:flex-end; gap:3px; height:100%; width:100%; justify-content:center;">
-                    <div style="display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; flex:1;">
-                      <span class="chart-bar-val">${c.cnt25 ? c.mm25.toFixed(0) : '—'}</span>
-                      <div class="chart-bar-fill ${c.cnt25 === 0 ? 'zero-rain' : ''}" style="height:${h25}%; width:16px;"></div>
-                    </div>
-                    <div style="display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; flex:1;">
-                      <span class="chart-bar-val">${c.cnt26 ? c.mm26.toFixed(0) : '—'}</span>
-                      <div class="chart-bar-fill green-bar ${c.cnt26 === 0 ? 'zero-rain' : ''}" style="height:${h26}%; width:16px;"></div>
-                    </div>
-                  </div>
-                  <div class="chart-bar-label">${c.nome}</div>
-                </div>
-              `;
-            })
-            .join('')}
+        <div style="width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:14px; border:1px solid #e2e8f0; background:#ffffff; padding:0.5rem;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:560px; height:auto; display:block;">
+            ${[0, 0.25, 0.5, 0.75, 1]
+              .map((t) => {
+                const y = padT + plotH * (1 - t);
+                return `
+                  <line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="${t === 0 ? '#cbd5e1' : '#f1f5f9'}" stroke-width="1.2" />
+                  <text x="${padL - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="#64748b">${Math.round(maxComp * t)}</text>
+                `;
+              })
+              .join('')}
+            ${comp
+              .map((c, i) => {
+                const cx = padL + i * stepX + stepX / 2;
+                const h25 = (c.mm25 / maxComp) * plotH;
+                const h26 = (c.mm26 / maxComp) * plotH;
+                const y25 = padT + plotH - h25;
+                const y26 = padT + plotH - h26;
+                return `
+                  <g style="cursor:pointer;" onclick="AmadeusViews.mostrarComparativoMesModal('${c.mesNum}', '${c.nome}', ${c.mm25}, ${c.cnt25}, ${c.mm26}, ${c.cnt26})">
+                    <rect x="${(cx - 20).toFixed(1)}" y="${y25.toFixed(1)}" width="18" height="${Math.max(2, h25).toFixed(1)}" rx="4" fill="#0284c7" />
+                    <rect x="${(cx + 2).toFixed(1)}" y="${y26.toFixed(1)}" width="18" height="${Math.max(2, h26).toFixed(1)}" rx="4" fill="#10b981" />
+                    ${c.mm25 > 0 ? `<text x="${(cx - 11).toFixed(1)}" y="${(y25 - 5).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#0369a1">${c.mm25.toFixed(0)}</text>` : ''}
+                    ${c.mm26 > 0 ? `<text x="${(cx + 11).toFixed(1)}" y="${(y26 - 5).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#059669">${c.mm26.toFixed(0)}</text>` : ''}
+                    <text x="${cx.toFixed(1)}" y="${H - 14}" text-anchor="middle" font-size="11" font-weight="700" fill="#475569">${c.nome}</text>
+                  </g>
+                `;
+              })
+              .join('')}
+          </svg>
         </div>
       `;
     }
@@ -1364,6 +1699,7 @@ const AmadeusViews = {
       mes: 'todos',
       pluviometro: 'todos',
       ultimos7Dias: false,
+      somenteChuvosos: false,
       busca: '',
       modoGrafico: 'combo'
     };
