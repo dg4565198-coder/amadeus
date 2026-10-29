@@ -156,10 +156,11 @@ const AmadeusCloud = {
         const remoteDb = await res.json();
         if (remoteDb && remoteDb.chuvas && remoteDb.usuarios) {
           window.AmadeusCore.db = remoteDb;
-          localStorage.setItem('AMADEUS_DB_V2', JSON.stringify(remoteDb));
+          window.AmadeusCore.normalizarUsuarios();
+          localStorage.setItem('AMADEUS_DB_V2', JSON.stringify(window.AmadeusCore.db));
           // Atualiza o perfil/status do usuário logado caso o Admin tenha mudado na nuvem
           if (window.AmadeusCore.currentUser) {
-            const atualizado = remoteDb.usuarios.find((u) => u.id === window.AmadeusCore.currentUser.id);
+            const atualizado = window.AmadeusCore.db.usuarios.find((u) => u.id === window.AmadeusCore.currentUser.id);
             if (atualizado) {
               if (!atualizado.ativo || atualizado.statusAcesso === 'recusado' || atualizado.statusAcesso === 'pendente') {
                 window.AmadeusCore.logout();
@@ -174,8 +175,10 @@ const AmadeusCloud = {
           this.saveConfig();
           if (!silent) {
             window.AmadeusCore.toast('☁️ Base de dados atualizada a partir do Firebase (amadeus-80eeb)!');
+            window.AmadeusViews.renderApp();
+          } else if (window.AmadeusCore.currentUser) {
+            window.AmadeusViews.renderApp();
           }
-          window.AmadeusViews.renderApp();
           return true;
         } else if (remoteDb === null) {
           // Banco Realtime Database recém-criado e vazio: envia a base inicial do AMADEUS automaticamente!
