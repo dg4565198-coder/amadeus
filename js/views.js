@@ -5,8 +5,33 @@
 
 const AmadeusViews = {
   authGateTab: 'login', // 'login' | 'cadastro' | 'emergencia'
+  viewMode: localStorage.getItem('AMADEUS_VIEW_MODE') || 'auto', // 'auto' | 'mobile' | 'desktop'
+
+  aplicarModoTela() {
+    document.body.classList.remove('force-mobile-view', 'force-desktop-view');
+    if (this.viewMode === 'mobile') {
+      document.body.classList.add('force-mobile-view');
+    } else if (this.viewMode === 'desktop') {
+      document.body.classList.add('force-desktop-view');
+    }
+  },
+
+  alterarModoTela(novoModo) {
+    this.viewMode = novoModo;
+    localStorage.setItem('AMADEUS_VIEW_MODE', novoModo);
+    this.aplicarModoTela();
+    this.renderApp();
+    const label =
+      novoModo === 'mobile'
+        ? '📱 Visualização Celular ativada!'
+        : novoModo === 'desktop'
+        ? '💻 Visualização Notebook ativada!'
+        : '🔄 Visualização Automática ativada!';
+    if (window.AmadeusCore) window.AmadeusCore.toast(label);
+  },
 
   renderApp() {
+    this.aplicarModoTela();
     const core = window.AmadeusCore;
     if (core && typeof core.normalizarUsuarios === 'function') {
       core.normalizarUsuarios();
@@ -14,6 +39,7 @@ const AmadeusViews = {
     const headerEl = document.getElementById('app-header');
     const sidebarEl = document.getElementById('app-sidebar');
     const mainEl = document.getElementById('app-main');
+    const bottomNavEl = document.getElementById('app-bottom-nav');
 
     // Bloqueio total antes do login: nada do sistema aparece sem usuário autenticado e aprovado
     if (!core.currentUser) {
@@ -25,6 +51,10 @@ const AmadeusViews = {
         sidebarEl.innerHTML = '';
         sidebarEl.style.display = 'none';
       }
+      if (bottomNavEl) {
+        bottomNavEl.innerHTML = '';
+        bottomNavEl.style.display = 'none';
+      }
       if (mainEl) {
         mainEl.innerHTML = this.viewAuthGate();
       }
@@ -33,8 +63,10 @@ const AmadeusViews = {
 
     if (headerEl) headerEl.style.display = '';
     if (sidebarEl) sidebarEl.style.display = '';
+    if (bottomNavEl) bottomNavEl.style.display = '';
     this.renderHeader();
     this.renderSidebar();
+    this.renderBottomNav();
     this.renderMainContent();
   },
 
@@ -43,18 +75,32 @@ const AmadeusViews = {
     const cfg = core.db.configuracoes || {};
     const aba = this.authGateTab || 'login';
     const fbOn = window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled;
+    const isMob = this.viewMode === 'mobile' || (this.viewMode === 'auto' && window.innerWidth <= 900);
 
     return `
-      <div style="min-height:88vh; display:flex; align-items:center; justify-content:center; padding:1.25rem;">
-        <div class="card" style="max-width:520px; width:100%; margin:0; padding:2rem; border-top:6px solid var(--green-700); box-shadow:0 20px 45px rgba(15,23,42,0.16);">
-          <div style="text-align:center; margin-bottom:1.4rem;">
+      <div style="min-height:88vh; display:flex; align-items:center; justify-content:center; padding:0.85rem;">
+        <div class="card" style="max-width:520px; width:100%; margin:0; padding:${isMob ? '1.35rem 1.1rem' : '2rem'}; border-top:6px solid var(--green-700); box-shadow:0 20px 45px rgba(15,23,42,0.16);">
+          <div style="display:flex; justify-content:center; margin-bottom:0.85rem;">
+            <div style="display:inline-flex; background:var(--slate-100); padding:0.2rem; border-radius:999px; border:1px solid var(--slate-200); gap:0.2rem;">
+              <button type="button" class="btn btn-sm ${!isMob ? 'btn-primary' : 'btn-secondary'}" style="border-radius:999px; padding:0.25rem 0.7rem; font-size:0.74rem;"
+                onclick="AmadeusViews.alterarModoTela('desktop')">
+                💻 Versão Notebook
+              </button>
+              <button type="button" class="btn btn-sm ${isMob ? 'btn-primary' : 'btn-secondary'}" style="border-radius:999px; padding:0.25rem 0.7rem; font-size:0.74rem;"
+                onclick="AmadeusViews.alterarModoTela('mobile')">
+                📱 Versão Celular
+              </button>
+            </div>
+          </div>
+
+          <div style="text-align:center; margin-bottom:1.25rem;">
             <img src="${cfg.logoUrl || 'assets/logo-amadeus.png'}" alt="Logo AMADEUS" onerror="this.src='assets/logo-amadeus.png'"
-              style="width:118px; height:118px; object-fit:contain; border-radius:20px; background:#fff; padding:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); margin-bottom:0.75rem;" />
-            <h1 style="font-size:1.65rem; font-weight:900; color:var(--green-900); margin:0;">${cfg.nomeSistema || 'AMADEUS'}</h1>
-            <div style="font-size:0.86rem; font-weight:700; color:var(--green-700); margin-top:0.2rem;">
+              style="width:${isMob ? '96px' : '118px'}; height:${isMob ? '96px' : '118px'}; object-fit:contain; border-radius:20px; background:#fff; padding:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); margin-bottom:0.65rem;" />
+            <h1 style="font-size:${isMob ? '1.4rem' : '1.65rem'}; font-weight:900; color:var(--green-900); margin:0;">${cfg.nomeSistema || 'AMADEUS'}</h1>
+            <div style="font-size:0.84rem; font-weight:700; color:var(--green-700); margin-top:0.2rem;">
               ${cfg.subtitulo || 'Ambiente de Aprendizado e Desenvolvimento em SIPA na Bahia'}
             </div>
-            <div style="font-size:0.76rem; color:var(--slate-500); margin-top:0.2rem;">
+            <div style="font-size:0.75rem; color:var(--slate-500); margin-top:0.2rem;">
               Acesso Restrito · Identifique-se ou solicite autorização ao Administrador
             </div>
           </div>
@@ -215,8 +261,8 @@ const AmadeusViews = {
     const u = core.currentUser;
     if (!u) return;
     const fbOn = window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled;
-    const ghOn = window.AmadeusCloud && window.AmadeusCloud.config.github.enabled;
     const pendentes = core.db.usuarios.filter((x) => x.statusAcesso === 'pendente').length;
+    const isMobActive = this.viewMode === 'mobile' || (this.viewMode === 'auto' && window.innerWidth <= 900);
 
     el.innerHTML = `
       <div class="brand-area" onclick="AmadeusViews.navegar('dashboard')">
@@ -232,17 +278,24 @@ const AmadeusViews = {
         </div>
       </div>
       <div class="header-actions">
+        <div class="view-mode-switcher" title="Alternar entre visualização Notebook e Celular">
+          <button type="button" class="view-mode-btn ${!isMobActive ? 'active' : ''}" onclick="AmadeusViews.alterarModoTela('desktop')">
+            💻 Notebook
+          </button>
+          <button type="button" class="view-mode-btn ${isMobActive ? 'active' : ''}" onclick="AmadeusViews.alterarModoTela('mobile')">
+            📱 Celular
+          </button>
+        </div>
         <span class="status-pill" title="Status de Conexão PWA e Nuvem">
           <span class="status-dot ${core.isOnline ? '' : 'offline'}"></span>
           ${core.isOnline ? 'Online' : 'Offline'}
           ${fbOn ? ' · 🔥 Firebase' : ''}
-          ${ghOn ? ' · 🐙 GitHub' : ''}
         </span>
         ${
           core.isAdmin() && pendentes > 0
             ? `
           <button class="btn btn-sm btn-amber" onclick="AmadeusViews.navegar('admin')" title="Solicitações de acesso aguardando sua aprovação">
-            🔔 ${pendentes} Cadastro(s) Pendente(s)
+            🔔 ${pendentes} Pendente(s)
           </button>
         `
             : ''
@@ -250,8 +303,8 @@ const AmadeusViews = {
         <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.instalarPWA()" title="Instalar aplicativo no celular ou computador">
           📲 Instalar App
         </button>
-        <span style="font-size:0.8rem; font-weight:700; color:#fff; background:rgba(255,255,255,0.14); padding:0.3rem 0.65rem; border-radius:8px;">
-          👤 ${u.nome}
+        <span style="font-size:0.78rem; font-weight:700; color:#fff; background:rgba(255,255,255,0.14); padding:0.28rem 0.6rem; border-radius:8px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          👤 ${u.nome.split(' ')[0]}
         </span>
         <button class="btn btn-sm btn-danger" onclick="AmadeusCore.logout()" title="Encerrar sessão e voltar para a tela de login">
           🚪 Sair
@@ -260,15 +313,13 @@ const AmadeusViews = {
     `;
   },
 
-  renderSidebar() {
-    const el = document.getElementById('app-sidebar');
-    if (!el) return;
+  getMenuModules() {
     const core = window.AmadeusCore;
     const db = core.db;
     const notasVisiveis = core.getVisibleNotesForCurrentUser();
     const pendentes = db.usuarios.filter((x) => x.statusAcesso === 'pendente').length;
 
-    const itens = [
+    return [
       { id: 'dashboard', icone: '📊', label: 'Painel Geral', badge: '' },
       { id: 'pluviometria', icone: '🌧️', label: 'Pluviometria 25/26', badge: db.chuvas.length },
       { id: 'atividades', icone: '🚜', label: 'Atividades Rurais', badge: db.atividades.length },
@@ -281,6 +332,13 @@ const AmadeusViews = {
       { id: 'portal', icone: '🏛️', label: 'Portal Institucional', badge: db.publicacoesPortal.length },
       { id: 'admin', icone: '⚙️', label: 'Admin, Acessos & Nuvem', badge: core.isAdmin() ? (pendentes > 0 ? `🔔 ${pendentes}` : 'Admin') : '🔒' }
     ];
+  },
+
+  renderSidebar() {
+    const el = document.getElementById('app-sidebar');
+    if (!el) return;
+    const core = window.AmadeusCore;
+    const itens = this.getMenuModules();
 
     el.innerHTML = `
       <div class="nav-section-label">Módulos AMADEUS</div>
@@ -296,6 +354,71 @@ const AmadeusViews = {
         )
         .join('')}
     `;
+  },
+
+  renderBottomNav() {
+    const el = document.getElementById('app-bottom-nav');
+    if (!el) return;
+    const core = window.AmadeusCore;
+    if (!core.currentUser) {
+      el.innerHTML = '';
+      return;
+    }
+    const atv = core.activeTab;
+    const Principais = [
+      { id: 'dashboard', icone: '📊', label: 'Painel' },
+      { id: 'pluviometria', icone: '🌧️', label: 'Chuvas' },
+      { id: 'atividades', icone: '🚜', label: 'Atividades' },
+      { id: 'animais', icone: '🐄', label: 'Animais' }
+    ];
+
+    el.innerHTML = `
+      ${Principais.map(
+        (item) => `
+        <button type="button" class="mobile-bottom-btn ${atv === item.id ? 'active' : ''}" onclick="AmadeusViews.navegar('${item.id}')">
+          <span class="mb-icon">${item.icone}</span>
+          <span>${item.label}</span>
+        </button>
+      `
+      ).join('')}
+      <button type="button" class="mobile-bottom-btn ${!Principais.some((p) => p.id === atv) ? 'active' : ''}" onclick="AmadeusViews.abrirMenuMobileModulos()">
+        <span class="mb-icon">☰</span>
+        <span>Módulos</span>
+      </button>
+    `;
+  },
+
+  abrirMenuMobileModulos() {
+    const core = window.AmadeusCore;
+    const itens = this.getMenuModules();
+    this.abrirModalGenerico(
+      '📱 Todos os Módulos do AMADEUS',
+      `
+        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:0.6rem; margin-bottom:1rem;">
+          ${itens
+            .map(
+              (item) => `
+            <button type="button" class="btn ${core.activeTab === item.id ? 'btn-primary' : 'btn-secondary'}"
+              style="flex-direction:column; padding:0.85rem 0.5rem; gap:0.3rem; height:auto; text-align:center;"
+              onclick="AmadeusViews.fecharModal(); AmadeusViews.navegar('${item.id}');">
+              <span style="font-size:1.45rem;">${item.icone}</span>
+              <span style="font-size:0.8rem; font-weight:700;">${item.label}</span>
+              ${item.badge !== '' ? `<span style="font-size:0.7rem; opacity:0.85;">(${item.badge})</span>` : ''}
+            </button>
+          `
+            )
+            .join('')}
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--slate-200);">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusViews.fecharModal(); AmadeusViews.alterarModoTela('desktop')">
+            💻 Mudar p/ Notebook
+          </button>
+          <button type="button" class="btn btn-sm btn-danger" onclick="AmadeusViews.fecharModal(); AmadeusCore.logout()">
+            🚪 Sair da Conta
+          </button>
+        </div>
+      `
+    );
   },
 
   navegar(tabId) {
@@ -431,7 +554,7 @@ const AmadeusViews = {
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.25rem;">
+      <div class="responsive-grid-2">
         <div class="card">
           <div class="card-header">
             <div class="card-title">📅 Próximos Agendamentos (Cartões Coloridos)</div>
@@ -1474,7 +1597,7 @@ const AmadeusViews = {
     const lista = [...core.db.agendamentos].sort((a, b) => `${a.data} ${a.horario}`.localeCompare(`${b.data} ${b.horario}`));
 
     return `
-      <div style="display:grid; grid-template-columns: 1fr 340px; gap:1.25rem; align-items:start;">
+      <div class="agendamento-layout-grid">
         <div class="card">
           <div class="card-header">
             <div>
@@ -2882,7 +3005,7 @@ const AmadeusViews = {
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap:1.25rem;">
+      <div class="responsive-grid-2">
         <div class="card">
           <div class="card-header">
             <div class="card-title">📦 Controle de Estoque de Insumos</div>
@@ -3686,7 +3809,7 @@ const AmadeusViews = {
       </div>
 
       <!-- Painel Profissional de Integração Firebase & GitHub -->
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:1.25rem; margin-bottom:1.25rem;">
+      <div class="responsive-grid-2" style="margin-bottom:1.25rem;">
         <!-- Card Firebase -->
         <div class="card" style="margin:0; border-top:4px solid #f59e0b;">
           <div class="card-header">
