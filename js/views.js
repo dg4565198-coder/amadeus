@@ -318,9 +318,13 @@ const AmadeusViews = {
     const db = core.db;
     const notasVisiveis = core.getVisibleNotesForCurrentUser();
     const pendentes = db.usuarios.filter((x) => x.statusAcesso === 'pendente').length;
+    const totalSipa =
+      (db.sipa && Array.isArray(db.sipa.plantios) ? db.sipa.plantios.length : 0) +
+      (db.sipa && Array.isArray(db.sipa.avaliacoes) ? db.sipa.avaliacoes.length : 0);
 
     return [
       { id: 'dashboard', icone: '📊', label: 'Painel Geral', badge: '' },
+      { id: 'sipa', icone: '🌱', label: 'SIPA', badge: totalSipa || 'SPD' },
       { id: 'pluviometria', icone: '🌧️', label: 'Pluviometria 25/26', badge: db.chuvas.length },
       { id: 'atividades', icone: '🚜', label: 'Atividades Rurais', badge: db.atividades.length },
       { id: 'agendamento', icone: '📅', label: 'Agendamento & Calc', badge: db.agendamentos.length },
@@ -367,9 +371,9 @@ const AmadeusViews = {
     const atv = core.activeTab;
     const Principais = [
       { id: 'dashboard', icone: '📊', label: 'Painel' },
+      { id: 'sipa', icone: '🌱', label: 'SIPA' },
       { id: 'pluviometria', icone: '🌧️', label: 'Chuvas' },
-      { id: 'atividades', icone: '🚜', label: 'Atividades' },
-      { id: 'animais', icone: '🐄', label: 'Animais' }
+      { id: 'atividades', icone: '🚜', label: 'Atividades' }
     ];
 
     el.innerHTML = `
@@ -435,6 +439,9 @@ const AmadeusViews = {
     switch (tab) {
       case 'dashboard':
         el.innerHTML = this.viewDashboard();
+        break;
+      case 'sipa':
+        el.innerHTML = this.viewSipa();
         break;
       case 'pluviometria':
         el.innerHTML = this.viewPluviometria();
@@ -4811,6 +4818,616 @@ const AmadeusViews = {
     core.db.usuarios = core.db.usuarios.filter((u) => u.id !== userId);
     core.saveDatabase('Excluiu usuário');
     core.toast('Usuário removido.');
+    this.renderApp();
+  },
+
+  // ==========================================================================
+  // MÓDULO SIPA — Sistema de Plantio Direto (SPD) & Integração no Campus
+  // ==========================================================================
+  sipaSubTab: 'plantios', // 'plantios' | 'avaliacoes' | 'ferramentas'
+
+  setSipaSubTab(aba) {
+    this.sipaSubTab = aba;
+    this.renderMainContent();
+  },
+
+  viewSipa() {
+    const core = window.AmadeusCore;
+    const isAdmin = core.isAdmin();
+    const canCreate = core.canCreate();
+    const sipa = core.db.sipa || { plantios: [], avaliacoes: [], registrosCampo: [] };
+    const plantios = sipa.plantios || [];
+    const avaliacoes = sipa.avaliacoes || [];
+    const sub = this.sipaSubTab || 'plantios';
+
+    const areaTotalHa = plantios.reduce((s, p) => s + (Number(p.areaHa) || 0), 0);
+    const mediaPalhada =
+      avaliacoes.length > 0
+        ? avaliacoes.reduce((s, a) => s + (Number(a.massaSecaTha) || 0), 0) / avaliacoes.length
+        : plantios.length > 0
+        ? plantios.reduce((s, p) => s + (Number(p.palhadaInicialTha) || 0), 0) / plantios.length
+        : 0;
+    const mediaCobertura =
+      avaliacoes.length > 0
+        ? avaliacoes.reduce((s, a) => s + (Number(a.coberturaSoloPct) || 0), 0) / avaliacoes.length
+        : 0;
+
+    return `
+      <!-- Cabeçalho Institucional do Módulo SIPA -->
+      <div class="card" style="background:linear-gradient(135deg, #0f291a 0%, #166534 65%, #15803d 100%); color:#ffffff; border:none; margin-bottom:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.16); padding:0.22rem 0.7rem; border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.45rem;">
+              🌱 MÓDULO SIPA · SISTEMA DE PLANTIO DIRETO NO CAMPUS (IF BAIANO)
+            </div>
+            <h2 style="font-size:1.45rem; font-weight:800; margin-bottom:0.25rem; line-height:1.2;">
+              SIPA — Sistema de Plantio Direto (SPD) &amp; Manejo Integrado
+            </h2>
+            <p style="font-size:0.84rem; color:#dcfce7; max-width:780px;">
+              Central de registros de plantio, acompanhamento de glebas, avaliação de palhada/cobertura do solo, consórcios forrageiros e ferramentas técnicas de apoio ao projeto SIPA no campus.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+            ${
+              canCreate
+                ? `
+              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalPlantioSipa()">
+                ➕ Novo Plantio / Gleba SPD
+              </button>
+              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#14532d; border:none;" onclick="AmadeusViews.abrirModalAvaliacaoSipa()">
+                📋 Registrar Avaliação de Campo
+              </button>
+            `
+                : `<span class="status-pill">👁️ Modo Leitor</span>`
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs do Projeto SIPA & Plantio Direto -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Plantios / Glebas SPD</div>
+          <div class="kpi-value">${plantios.length}</div>
+          <div class="kpi-sub">Área total monitorada: <strong>${areaTotalHa.toFixed(2)} ha</strong></div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Massa Seca / Palhada</div>
+          <div class="kpi-value">${mediaPalhada.toFixed(1)} t/ha</div>
+          <div class="kpi-sub">Referência ideal SPD: &ge; 6,0 t/ha</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Taxa de Cobertura do Solo</div>
+          <div class="kpi-value">${mediaCobertura > 0 ? mediaCobertura.toFixed(0) + '%' : '—'}</div>
+          <div class="kpi-sub">${avaliacoes.length} avaliação(ões) técnica(s) registrada(s)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Integração Clima × Plantio</div>
+          <div class="kpi-value">${core.db.chuvas.filter((c) => c.data.startsWith('2026')).reduce((s, r) => s + Number(r.mm), 0).toFixed(0)} mm</div>
+          <div class="kpi-sub">Acumulado 2026 na área experimental</div>
+        </div>
+      </div>
+
+      <!-- Sub-navegação Interna do Módulo SIPA -->
+      <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:1.15rem; background:#ffffff; padding:0.5rem; border-radius:12px; border:1px solid var(--slate-200);">
+        <button class="btn btn-sm ${sub === 'plantios' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setSipaSubTab('plantios')">
+          🌾 Plantios, Culturas &amp; Glebas (${plantios.length})
+        </button>
+        <button class="btn btn-sm ${sub === 'avaliacoes' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setSipaSubTab('avaliacoes')">
+          🍂 Avaliações de Palhada, Solo &amp; Dados (${avaliacoes.length})
+        </button>
+        <button class="btn btn-sm ${sub === 'ferramentas' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setSipaSubTab('ferramentas')">
+          🧮 Calculadoras &amp; Ferramentas SPD
+        </button>
+      </div>
+
+      ${
+        sub === 'plantios'
+          ? `
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🌾 Registros de Plantio Direto (SPD) e Consórcios no Campus</div>
+              <div style="font-size:0.8rem; color:var(--slate-500);">
+                Controle de semeadura, culturas solteiras ou consorciadas, espaçamento, população de plantas, palhada inicial e adubação
+              </div>
+            </div>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPlantioSipa()">➕ Cadastrar Plantio</button>`
+                : ''
+            }
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data Plantio</th>
+                  <th>Gleba / Local no Campus</th>
+                  <th>Cultura / Consórcio</th>
+                  <th>Sistema &amp; Espaçamento</th>
+                  <th>População &amp; Palhada</th>
+                  <th>Adubação / Manejo</th>
+                  <th>Status</th>
+                  <th>Responsável</th>
+                  ${isAdmin ? '<th>Ações</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  plantios.length === 0
+                    ? `<tr><td colspan="9" style="text-align:center; padding:1.5rem; color:var(--slate-500);">Nenhum plantio cadastrado ainda. Clique em "➕ Cadastrar Plantio" para iniciar.</td></tr>`
+                    : plantios
+                        .map(
+                          (p) => `
+                  <tr>
+                    <td><strong>${core.formatDateBR(p.dataPlantio)}</strong></td>
+                    <td><strong>${p.gleba}</strong><br/><span style="font-size:0.74rem; color:var(--slate-500);">Área: ${Number(p.areaHa).toFixed(2)} ha</span></td>
+                    <td><strong style="color:var(--green-800);">${p.cultura}</strong></td>
+                    <td>${p.sistema || 'Plantio Direto'}<br/><span style="font-size:0.74rem; color:var(--slate-500);">Espaç.: ${p.espacamentoCm} cm</span></td>
+                    <td><strong>${Number(p.populacaoHa || 0).toLocaleString('pt-BR')} pl/ha</strong><br/><span style="font-size:0.74rem; color:#0369a1;">Palhada: ${Number(p.palhadaInicialTha || 0).toFixed(1)} t/ha</span></td>
+                    <td style="font-size:0.78rem;">${p.adubacaoBase || '—'}<br/><span style="color:var(--slate-500);">${p.observacoes || ''}</span></td>
+                    <td><span class="role-badge role-comum">${p.status || 'Ativo'}</span></td>
+                    <td>${p.responsavel}</td>
+                    ${
+                      isAdmin
+                        ? `
+                      <td>
+                        <div style="display:flex; gap:0.25rem;">
+                          <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalPlantioSipa('${p.id}')" title="Editar">✏️</button>
+                          <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirPlantioSipa('${p.id}')" title="Excluir">🗑️</button>
+                        </div>
+                      </td>
+                    `
+                        : ''
+                    }
+                  </tr>
+                `
+                        )
+                        .join('')
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+          : sub === 'avaliacoes'
+          ? `
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🍂 Monitoramento de Palhada, Cobertura de Solo e Desenvolvimento Vegetativo</div>
+              <div style="font-size:0.8rem; color:var(--slate-500);">
+                Acompanhamento técnico de biomassa residual (t/ha), porcentagem de cobertura do solo, altura de dossel e conservação de umidade
+              </div>
+            </div>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAvaliacaoSipa()">➕ Nova Avaliação de Campo</button>`
+                : ''
+            }
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Gleba / Talhão</th>
+                  <th>Tipo de Avaliação</th>
+                  <th>Cobertura do Solo (%)</th>
+                  <th>Massa Seca (t/ha)</th>
+                  <th>Altura de Planta (cm)</th>
+                  <th>Umidade do Solo</th>
+                  <th>Responsável</th>
+                  ${isAdmin ? '<th>Ações</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  avaliacoes.length === 0
+                    ? `<tr><td colspan="9" style="text-align:center; padding:1.5rem; color:var(--slate-500);">Nenhuma avaliação registrada ainda.</td></tr>`
+                    : avaliacoes
+                        .map(
+                          (a) => `
+                  <tr>
+                    <td><strong>${core.formatDateBR(a.data)}</strong></td>
+                    <td><strong>${a.gleba}</strong></td>
+                    <td>${a.tipoAvaliacao}</td>
+                    <td><strong style="color:var(--green-700);">${Number(a.coberturaSoloPct || 0).toFixed(0)}%</strong></td>
+                    <td><strong style="color:#0284c7;">${Number(a.massaSecaTha || 0).toFixed(2)} t/ha</strong></td>
+                    <td>${a.alturaPlantaCm ? a.alturaPlantaCm + ' cm' : '—'}</td>
+                    <td>${a.umidadeSoloStatus || '—'}<br/><span style="font-size:0.74rem; color:var(--slate-500);">${a.observacoes || ''}</span></td>
+                    <td>${a.responsavel}</td>
+                    ${
+                      isAdmin
+                        ? `
+                      <td>
+                        <div style="display:flex; gap:0.25rem;">
+                          <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAvaliacaoSipa('${a.id}')" title="Editar">✏️</button>
+                          <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirAvaliacaoSipa('${a.id}')" title="Excluir">🗑️</button>
+                        </div>
+                      </td>
+                    `
+                        : ''
+                    }
+                  </tr>
+                `
+                        )
+                        .join('')
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+          : `
+        <div class="responsive-grid-2">
+          <!-- Calculadora 1: Regulagem de Semeadora e População de Plantas no SPD -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-header">
+              <div class="card-title">🚜 Calculadora de Semeadura &amp; Estande no Plantio Direto (SPD)</div>
+            </div>
+            <p style="font-size:0.82rem; color:var(--slate-600); margin-bottom:0.85rem;">
+              Calcule o número de sementes por metro linear e a necessidade total de sementes corrigida pelo poder germinativo/pureza para o plantio no campus.
+            </p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>População Desejada (plantas/ha)</label>
+                <input type="number" id="spd-pop" class="form-control" value="60000" oninput="AmadeusViews.calcularRegulagemPlantioSPD()" />
+              </div>
+              <div class="form-group">
+                <label>Espaçamento entre Linhas (cm)</label>
+                <input type="number" id="spd-esp" class="form-control" value="50" oninput="AmadeusViews.calcularRegulagemPlantioSPD()" />
+              </div>
+              <div class="form-group">
+                <label>Germinação / Sobrevivência no SPD (%)</label>
+                <input type="number" id="spd-germ" class="form-control" value="90" oninput="AmadeusViews.calcularRegulagemPlantioSPD()" />
+              </div>
+              <div class="form-group">
+                <label>Área da Gleba no Campus (ha)</label>
+                <input type="number" step="0.1" id="spd-area" class="form-control" value="1.5" oninput="AmadeusViews.calcularRegulagemPlantioSPD()" />
+              </div>
+            </div>
+            <div id="spd-calc-res" style="background:var(--green-50); border:1px solid var(--green-200); border-radius:10px; padding:0.9rem; font-size:0.86rem; color:var(--green-900);">
+              <strong>Resultado para Regulagem:</strong><br/>
+              • Metros lineares por hectare: <strong>20.000 m/ha</strong><br/>
+              • Plantas finais por metro: <strong>3,00 plantas/m</strong><br/>
+              • Regulagem da semeadora (corrigida p/ 90%): <strong>3,33 sementes/metro linear</strong><br/>
+              • Total de sementes para 1,50 ha: <strong>100.000 sementes</strong>
+            </div>
+          </div>
+
+          <!-- Calculadora 2: Estimativa de Massa Seca de Palhada / Forragem por Quadro Amostral -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-header">
+              <div class="card-title">🍂 Calculadora de Massa Seca de Palhada / Forragem (t/ha)</div>
+            </div>
+            <p style="font-size:0.82rem; color:var(--slate-600); margin-bottom:0.85rem;">
+              Converta o peso coletado no quadro amostral de campo (0,25 m², 0,50 m² ou 1,00 m²) diretamente em toneladas de matéria seca por hectare (t MS/ha).
+            </p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Área do Quadro Amostral (m²)</label>
+                <select id="spd-quadro" class="form-control" onchange="AmadeusViews.calcularMassaSecaSPD()">
+                  <option value="0.25">0,25 m² (Quadro 0,5 m × 0,5 m)</option>
+                  <option value="0.5">0,50 m² (Quadro 1,0 m × 0,5 m)</option>
+                  <option value="1" selected>1,00 m² (Quadro 1,0 m × 1,0 m)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Peso Verde Coletado no Quadro (g)</label>
+                <input type="number" id="spd-pverde" class="form-control" value="2200" oninput="AmadeusViews.calcularMassaSecaSPD()" />
+              </div>
+              <div class="form-group">
+                <label>Teor de Matéria Seca — MS (%)</label>
+                <input type="number" id="spd-ms" class="form-control" value="30" oninput="AmadeusViews.calcularMassaSecaSPD()" />
+              </div>
+            </div>
+            <div id="spd-ms-res" style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:0.9rem; font-size:0.86rem; color:#0c4a6e;">
+              <strong>Estimativa de Produção por Hectare:</strong><br/>
+              • Massa Verde Estimada: <strong>22,00 t MV/ha</strong> (22.000 kg/ha)<br/>
+              • Massa Seca de Palhada / Forragem: <strong>6,60 t MS/ha</strong> (6.600 kg MS/ha)<br/>
+              • Status SPD: <strong>✅ Acima do patamar recomendado (&ge; 6,0 t MS/ha) para proteção do solo!</strong>
+            </div>
+          </div>
+        </div>
+      `
+      }
+    `;
+  },
+
+  calcularRegulagemPlantioSPD() {
+    const pop = parseFloat(document.getElementById('spd-pop')?.value) || 0;
+    const espCm = parseFloat(document.getElementById('spd-esp')?.value) || 50;
+    const germ = parseFloat(document.getElementById('spd-germ')?.value) || 90;
+    const area = parseFloat(document.getElementById('spd-area')?.value) || 1;
+    const el = document.getElementById('spd-calc-res');
+    if (!el) return;
+
+    const metrosLinearesHa = espCm > 0 ? 10000 / (espCm / 100) : 0;
+    const plantasPorMetro = metrosLinearesHa > 0 ? pop / metrosLinearesHa : 0;
+    const sementesPorMetro = germ > 0 ? plantasPorMetro / (germ / 100) : plantasPorMetro;
+    const totalSementesArea = (germ > 0 ? pop / (germ / 100) : pop) * area;
+
+    el.innerHTML = `
+      <strong>Resultado para Regulagem:</strong><br/>
+      • Metros lineares por hectare: <strong>${metrosLinearesHa.toFixed(0)} m/ha</strong><br/>
+      • Plantas finais por metro: <strong>${plantasPorMetro.toFixed(2)} plantas/m</strong><br/>
+      • Regulagem da semeadora (corrigida p/ ${germ}%): <strong>${sementesPorMetro.toFixed(2)} sementes/metro linear</strong><br/>
+      • Total de sementes para ${area.toFixed(2)} ha: <strong>${Math.round(totalSementesArea).toLocaleString('pt-BR')} sementes</strong>
+    `;
+  },
+
+  calcularMassaSecaSPD() {
+    const areaQ = parseFloat(document.getElementById('spd-quadro')?.value) || 1;
+    const pesoVerdeG = parseFloat(document.getElementById('spd-pverde')?.value) || 0;
+    const teorMs = parseFloat(document.getElementById('spd-ms')?.value) || 30;
+    const el = document.getElementById('spd-ms-res');
+    if (!el) return;
+
+    const mvKgHa = areaQ > 0 ? (pesoVerdeG / 1000 / areaQ) * 10000 : 0;
+    const mvTha = mvKgHa / 1000;
+    const msTha = mvTha * (teorMs / 100);
+    const msKgHa = mvKgHa * (teorMs / 100);
+
+    el.innerHTML = `
+      <strong>Estimativa de Produção por Hectare:</strong><br/>
+      • Massa Verde Estimada: <strong>${mvTha.toFixed(2)} t MV/ha</strong> (${Math.round(mvKgHa).toLocaleString('pt-BR')} kg/ha)<br/>
+      • Massa Seca de Palhada / Forragem: <strong>${msTha.toFixed(2)} t MS/ha</strong> (${Math.round(msKgHa).toLocaleString('pt-BR')} kg MS/ha)<br/>
+      • Status SPD: <strong>${
+        msTha >= 6
+          ? '✅ Acima do patamar recomendado (&ge; 6,0 t MS/ha) para proteção do solo!'
+          : '⚠️ Abaixo de 6,0 t MS/ha — reforçar produção de palhada/consorciação.'
+      }</strong>
+    `;
+  },
+
+  abrirModalPlantioSipa(id = null) {
+    const core = window.AmadeusCore;
+    if (id && !core.requireAdmin('editar plantio SIPA já lançado')) return;
+    if (!id && !core.requireCreate('cadastrar novo plantio no módulo SIPA')) return;
+    const lista = core.db.sipa?.plantios || [];
+    const ex = id ? lista.find((x) => x.id === id) : null;
+    const item = ex || {
+      gleba: 'Área Experimental SIPA · Campus IF Baiano',
+      cultura: '',
+      sistema: 'Sistema de Plantio Direto (SPD) na Palhada',
+      dataPlantio: new Date().toISOString().slice(0, 10),
+      areaHa: 1.0,
+      espacamentoCm: 50,
+      populacaoHa: 60000,
+      palhadaInicialTha: 6.0,
+      adubacaoBase: '',
+      responsavel: core.currentUser ? core.currentUser.nome : 'Guilherme Dias Pereira',
+      status: 'Em Desenvolvimento',
+      observacoes: ''
+    };
+
+    this.abrirModalGenerico(
+      ex ? '✏️ Editar Registro de Plantio SIPA / SPD' : '🌱 Novo Registro de Plantio Direto (SPD) no Campus',
+      `
+        <form onsubmit="AmadeusViews.salvarPlantioSipa(event, '${ex ? ex.id : ''}')">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Gleba / Talhão no Campus *</label>
+              <input type="text" id="sipa-pl-gleba" class="form-control" value="${item.gleba}" required />
+            </div>
+            <div class="form-group">
+              <label>Cultura ou Consórcio *</label>
+              <input type="text" id="sipa-pl-cultura" class="form-control" placeholder="Ex.: Milho + Brachiaria ruziziensis, Sorgo, Feijão..." value="${item.cultura}" required />
+            </div>
+            <div class="form-group">
+              <label>Sistema de Manejo *</label>
+              <select id="sipa-pl-sistema" class="form-control">
+                <option value="Sistema de Plantio Direto (SPD) na Palhada" ${item.sistema.includes('Direto') ? 'selected' : ''}>Sistema de Plantio Direto (SPD) na Palhada</option>
+                <option value="Integração Lavoura-Pecuária (ILP / SIPA)" ${item.sistema.includes('ILP') ? 'selected' : ''}>Integração Lavoura-Pecuária (ILP / SIPA)</option>
+                <option value="Cultivo de Cobertura / Adubação Verde" ${item.sistema.includes('Cobertura') ? 'selected' : ''}>Cultivo de Cobertura / Adubação Verde</option>
+                <option value="Renovação de Pastagem em SPD" ${item.sistema.includes('Pastagem') ? 'selected' : ''}>Renovação de Pastagem em SPD</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Data do Plantio *</label>
+              <input type="date" id="sipa-pl-data" class="form-control" value="${item.dataPlantio}" required />
+            </div>
+            <div class="form-group">
+              <label>Área Plantada (ha) *</label>
+              <input type="number" step="0.01" id="sipa-pl-area" class="form-control" value="${item.areaHa}" required />
+            </div>
+            <div class="form-group">
+              <label>Espaçamento entre Linhas (cm)</label>
+              <input type="number" step="1" id="sipa-pl-esp" class="form-control" value="${item.espacamentoCm}" />
+            </div>
+            <div class="form-group">
+              <label>População Alvo (plantas/ha)</label>
+              <input type="number" step="100" id="sipa-pl-pop" class="form-control" value="${item.populacaoHa}" />
+            </div>
+            <div class="form-group">
+              <label>Palhada Inicial sobre o Solo (t MS/ha)</label>
+              <input type="number" step="0.1" id="sipa-pl-palhada" class="form-control" value="${item.palhadaInicialTha}" />
+            </div>
+            <div class="form-group">
+              <label>Adubação de Base / Cobertura</label>
+              <input type="text" id="sipa-pl-adub" class="form-control" placeholder="Ex.: NPK 08-28-16 (300 kg/ha) + Ureia..." value="${item.adubacaoBase}" />
+            </div>
+            <div class="form-group">
+              <label>Status do Plantio</label>
+              <select id="sipa-pl-status" class="form-control">
+                <option value="Planejado" ${item.status === 'Planejado' ? 'selected' : ''}>Planejado</option>
+                <option value="Em Desenvolvimento" ${item.status === 'Em Desenvolvimento' ? 'selected' : ''}>Em Desenvolvimento</option>
+                <option value="Em Pastejo / Avaliação" ${item.status === 'Em Pastejo / Avaliação' ? 'selected' : ''}>Em Pastejo / Avaliação</option>
+                <option value="Colhido / Concluído" ${item.status === 'Colhido / Concluído' ? 'selected' : ''}>Colhido / Concluído</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Responsável Técnico *</label>
+              <input type="text" id="sipa-pl-resp" class="form-control" value="${item.responsavel}" required />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Observações Técnicas e Orientações do Professor</label>
+            <textarea id="sipa-pl-obs" class="form-control" rows="2">${item.observacoes || ''}</textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Plantio SIPA</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarPlantioSipa(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    if (!core.db.sipa) core.db.sipa = { plantios: [], avaliacoes: [], registrosCampo: [] };
+    const novo = {
+      id: idExistente || 'sipa-pl-' + Date.now(),
+      gleba: document.getElementById('sipa-pl-gleba').value.trim(),
+      cultura: document.getElementById('sipa-pl-cultura').value.trim(),
+      sistema: document.getElementById('sipa-pl-sistema').value,
+      dataPlantio: document.getElementById('sipa-pl-data').value,
+      areaHa: parseFloat(document.getElementById('sipa-pl-area').value) || 0,
+      espacamentoCm: parseFloat(document.getElementById('sipa-pl-esp').value) || 0,
+      populacaoHa: parseFloat(document.getElementById('sipa-pl-pop').value) || 0,
+      palhadaInicialTha: parseFloat(document.getElementById('sipa-pl-palhada').value) || 0,
+      adubacaoBase: document.getElementById('sipa-pl-adub').value.trim(),
+      status: document.getElementById('sipa-pl-status').value,
+      responsavel: document.getElementById('sipa-pl-resp').value.trim(),
+      observacoes: document.getElementById('sipa-pl-obs').value.trim()
+    };
+
+    if (idExistente) {
+      const idx = core.db.sipa.plantios.findIndex((x) => x.id === idExistente);
+      if (idx !== -1) core.db.sipa.plantios[idx] = novo;
+    } else {
+      core.db.sipa.plantios.unshift(novo);
+    }
+
+    core.saveDatabase(`Salvou plantio SIPA: ${novo.cultura}`);
+    core.toast('🌱 Registro de plantio SIPA salvo com sucesso!');
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  excluirPlantioSipa(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir registro de plantio SIPA')) return;
+    core.db.sipa.plantios = (core.db.sipa.plantios || []).filter((x) => x.id !== id);
+    core.saveDatabase('Excluiu plantio SIPA');
+    core.toast('Registro de plantio removido.');
+    this.renderApp();
+  },
+
+  abrirModalAvaliacaoSipa(id = null) {
+    const core = window.AmadeusCore;
+    if (id && !core.requireAdmin('editar avaliação SIPA')) return;
+    if (!id && !core.requireCreate('registrar avaliação SIPA')) return;
+    const lista = core.db.sipa?.avaliacoes || [];
+    const ex = id ? lista.find((x) => x.id === id) : null;
+    const item = ex || {
+      data: new Date().toISOString().slice(0, 10),
+      gleba: 'Área Experimental SIPA · Campus IF Baiano',
+      tipoAvaliacao: 'Cobertura de Solo e Massa Seca de Palhada (SPD)',
+      coberturaSoloPct: 85,
+      massaSecaTha: 6.0,
+      alturaPlantaCm: 90,
+      umidadeSoloStatus: 'Adequada',
+      responsavel: core.currentUser ? core.currentUser.nome : 'Guilherme Dias Pereira',
+      observacoes: ''
+    };
+
+    this.abrirModalGenerico(
+      ex ? '✏️ Editar Avaliação SIPA' : '🍂 Registrar Avaliação de Palhada, Solo e Cultura (SIPA)',
+      `
+        <form onsubmit="AmadeusViews.salvarAvaliacaoSipa(event, '${ex ? ex.id : ''}')">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Data da Avaliação *</label>
+              <input type="date" id="sipa-av-data" class="form-control" value="${item.data}" required />
+            </div>
+            <div class="form-group">
+              <label>Gleba / Talhão *</label>
+              <input type="text" id="sipa-av-gleba" class="form-control" value="${item.gleba}" required />
+            </div>
+            <div class="form-group">
+              <label>Tipo de Avaliação *</label>
+              <input type="text" id="sipa-av-tipo" class="form-control" value="${item.tipoAvaliacao}" required />
+            </div>
+            <div class="form-group">
+              <label>Taxa de Cobertura do Solo (%)</label>
+              <input type="number" step="1" max="100" id="sipa-av-cob" class="form-control" value="${item.coberturaSoloPct}" />
+            </div>
+            <div class="form-group">
+              <label>Massa Seca de Palhada / Forragem (t/ha)</label>
+              <input type="number" step="0.1" id="sipa-av-ms" class="form-control" value="${item.massaSecaTha}" />
+            </div>
+            <div class="form-group">
+              <label>Altura Média de Plantas / Dossel (cm)</label>
+              <input type="number" step="1" id="sipa-av-alt" class="form-control" value="${item.alturaPlantaCm}" />
+            </div>
+            <div class="form-group">
+              <label>Condição de Umidade / Solo</label>
+              <input type="text" id="sipa-av-umid" class="form-control" value="${item.umidadeSoloStatus}" />
+            </div>
+            <div class="form-group">
+              <label>Responsável *</label>
+              <input type="text" id="sipa-av-resp" class="form-control" value="${item.responsavel}" required />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Observações e Dados Coletados</label>
+            <textarea id="sipa-av-obs" class="form-control" rows="2">${item.observacoes || ''}</textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Avaliação</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarAvaliacaoSipa(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    if (!core.db.sipa) core.db.sipa = { plantios: [], avaliacoes: [], registrosCampo: [] };
+    const novo = {
+      id: idExistente || 'sipa-av-' + Date.now(),
+      data: document.getElementById('sipa-av-data').value,
+      gleba: document.getElementById('sipa-av-gleba').value.trim(),
+      tipoAvaliacao: document.getElementById('sipa-av-tipo').value.trim(),
+      coberturaSoloPct: parseFloat(document.getElementById('sipa-av-cob').value) || 0,
+      massaSecaTha: parseFloat(document.getElementById('sipa-av-ms').value) || 0,
+      alturaPlantaCm: parseFloat(document.getElementById('sipa-av-alt').value) || 0,
+      umidadeSoloStatus: document.getElementById('sipa-av-umid').value.trim(),
+      responsavel: document.getElementById('sipa-av-resp').value.trim(),
+      observacoes: document.getElementById('sipa-av-obs').value.trim()
+    };
+
+    if (idExistente) {
+      const idx = core.db.sipa.avaliacoes.findIndex((x) => x.id === idExistente);
+      if (idx !== -1) core.db.sipa.avaliacoes[idx] = novo;
+    } else {
+      core.db.sipa.avaliacoes.unshift(novo);
+    }
+
+    core.saveDatabase(`Salvou avaliação SIPA: ${novo.tipoAvaliacao}`);
+    core.toast('🍂 Avaliação de campo SIPA registrada com sucesso!');
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  excluirAvaliacaoSipa(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir avaliação SIPA')) return;
+    core.db.sipa.avaliacoes = (core.db.sipa.avaliacoes || []).filter((x) => x.id !== id);
+    core.saveDatabase('Excluiu avaliação SIPA');
+    core.toast('Avaliação SIPA removida.');
     this.renderApp();
   },
 
