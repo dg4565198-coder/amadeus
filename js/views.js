@@ -141,6 +141,24 @@ const AmadeusViews = {
                   🔄 Sincronizar Cadastros da Nuvem
                 </button>
               </div>
+              <div style="margin-top:0.75rem; background:var(--green-50); padding:0.75rem; border-radius:8px; border:1px solid var(--green-200);">
+                <div style="font-size:0.8rem; font-weight:800; color:var(--green-900); margin-bottom:0.4rem;">
+                  🔑 Contas Rápidas Autorizadas (Clique para preencher):
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                  <button type="button" class="btn btn-sm btn-secondary" style="background:#fff; justify-content:space-between; font-size:0.76rem; border:1px solid var(--slate-300);"
+                    onclick="document.getElementById('gate-user').value='charles'; document.getElementById('gate-pass').value='123'; AmadeusCore.toast('Preenchido: Professor Charles');">
+                    <span>👨‍🏫 <strong>Professor Charles Leonel</strong> (Admin)</span>
+                    <span style="color:var(--slate-500);">charles / 123</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-secondary" style="background:#fff; justify-content:space-between; font-size:0.76rem; border:1px solid var(--slate-300);"
+                    onclick="document.getElementById('gate-user').value='admin'; document.getElementById('gate-pass').value='123'; AmadeusCore.toast('Preenchido: Guilherme Admin');">
+                    <span>👑 <strong>Guilherme Dias Pereira</strong> (Admin)</span>
+                    <span style="color:var(--slate-500);">admin / 123</span>
+                  </button>
+                </div>
+              </div>
+
               <div style="margin-top:0.75rem; background:var(--slate-50); padding:0.65rem; border-radius:8px; border:1px solid var(--slate-200);">
                 <strong>Perfis de Acesso do Sistema:</strong><br/>
                 • <strong>👑 Admin:</strong> Controle total (criar, editar, excluir registros e aprovar usuários)<br/>
