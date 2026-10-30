@@ -73,6 +73,64 @@ const AmadeusCore = {
       }
     });
 
+    // Sub-estruturas do Módulo de Animais: Checklist de Sanidade & Monitoramento de Pastagens/Bebedouros
+    if (!Array.isArray(this.db.checkSanidade)) {
+      this.db.checkSanidade = [
+        {
+          id: 'san-01',
+          data: '2026-08-15',
+          loteOuAnimal: 'Lote Experimental 01 (Bovinos)',
+          estadoGeral: 'Ótimo', // Ótimo, Bom, Regular, Alerta
+          escoreCorporal: '3.5 / 5.0 (Adequado)',
+          vacinacaoVermifugacao: 'Em dia (Vacina Clostridiose & Febre Aftosa atualizadas)',
+          sinaisClinicos: 'Nenhum sinal clínico de enfermidade, respiração normal, sem claudicação',
+          situacaoBebedouros: 'Limpos, com boa vazão de água e bóia regulada',
+          limpezaCocho: 'Cocho higienizado e sal mineral reposto',
+          responsavel: 'Guilherme Dias Pereira',
+          observacoes: 'Animais alertas, ativos no pastejo matinal e com bom enchimento ruminal.'
+        }
+      ];
+    }
+
+    if (!Array.isArray(this.db.pastagens)) {
+      this.db.pastagens = [
+        {
+          id: 'past-01',
+          piqueteNome: 'Piquete 01 — ILP Campus IF Baiano',
+          areaHa: 1.5,
+          tipoPastagem: 'Brachiaria ruziziensis (Consórcio Santa Fé com Milho)',
+          dataAvaliacao: '2026-08-10',
+          alturaMediaCm: 32,
+          alturaEntradaCm: 30,
+          alturaSaidaCm: 15,
+          condicaoGeral: 'Excelente', // Excelente, Boa, Regular, Rapada/Degradada
+          coberturaSoloPct: 92,
+          statusBebedouro: 'Operacional (Água limpa e fresca)',
+          cargaAnimalCabecas: 4,
+          diasOcupacao: 12,
+          responsavel: 'Guilherme Dias Pereira',
+          observacoes: 'Excelente rebrota após dessecação parcial e ótima retenção de palhada residual no SPD.'
+        },
+        {
+          id: 'past-02',
+          piqueteNome: 'Piquete 02 — Várzea / Pastejo Rotacionado',
+          areaHa: 1.2,
+          tipoPastagem: 'Brachiaria humidicola (Quicuio-da-Amazônia)',
+          dataAvaliacao: '2026-08-12',
+          alturaMediaCm: 22,
+          alturaEntradaCm: 25,
+          alturaSaidaCm: 12,
+          condicaoGeral: 'Boa',
+          coberturaSoloPct: 88,
+          statusBebedouro: 'Operacional (Necessita revisão de boia)',
+          cargaAnimalCabecas: 3,
+          diasOcupacao: 8,
+          responsavel: 'Equipe de Campo IF Baiano',
+          observacoes: 'Boa adaptação ao solo mais úmido da baixada do campus.'
+        }
+      ];
+    }
+
     this.db.atividades.forEach((atv) => {
       if (!Array.isArray(atv.responsaveisIds)) {
         atv.responsaveisIds = [];
