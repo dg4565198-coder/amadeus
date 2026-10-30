@@ -131,6 +131,29 @@ const AmadeusCore = {
       ];
     }
 
+    if (!Array.isArray(this.db.lotesPasto)) {
+      this.db.lotesPasto = [
+        {
+          id: 'lote-01',
+          nome: 'Lote Experimental 01 (Pastejo ILP)',
+          finalidade: 'Recria e Terminação em Consórcio Milho + Braquiária',
+          pastoDestino: 'Piquete 01 — ILP Campus IF Baiano',
+          dataFormacao: '2026-08-01',
+          responsavel: 'Guilherme Dias Pereira',
+          observacoes: 'Lote selecionado para acompanhamento de GMD no pastejo rotacionado.'
+        },
+        {
+          id: 'lote-02',
+          nome: 'Lote 02 (Piquete de Várzea)',
+          finalidade: 'Adaptação e Pastejo em Brachiaria humidicola',
+          pastoDestino: 'Piquete 02 — Várzea / Pastejo Rotacionado',
+          dataFormacao: '2026-08-10',
+          responsavel: 'Equipe de Campo IF Baiano',
+          observacoes: 'Lote mantido em área mais úmida do campus.'
+        }
+      ];
+    }
+
     this.db.atividades.forEach((atv) => {
       if (!Array.isArray(atv.responsaveisIds)) {
         atv.responsaveisIds = [];
