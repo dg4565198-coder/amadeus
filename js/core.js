@@ -295,6 +295,65 @@ const AmadeusCore = {
       }
     }
 
+    if (!this.db.sipa.lavouraMilho || typeof this.db.sipa.lavouraMilho !== 'object') {
+      this.db.sipa.lavouraMilho = {
+        senhaAcesso: 'sipaamadeus0908',
+        atributosQualidade: [
+          { id: 'atr-1', categoria: 'produtividade', nome: 'Produtividade de Grãos', unidade: 'sc/ha', spd: 138.5, spc: 112.0, descricao: 'Rendimento de grãos limpos e secos corrigidos a 13% de umidade.', destaque: true },
+          { id: 'atr-2', categoria: 'produtividade', nome: 'Massa Seca da Forragem / Silagem', unidade: 't/ha', spd: 18.2, spc: 14.5, descricao: 'Biomassa aérea seca total produzida na colheita da área experimental.', destaque: true },
+          { id: 'atr-3', categoria: 'bromatologia', nome: 'Proteína Bruta (PB)', unidade: '%', spd: 9.4, spc: 8.1, descricao: 'Teor proteico na matéria seca do grão e da silagem de planta inteira.', destaque: true },
+          { id: 'atr-4', categoria: 'bromatologia', nome: 'Nutrientes Digestíveis Totais (NDT)', unidade: '%', spd: 71.8, spc: 65.4, descricao: 'Densidade energética líquida metabolizável para nutrição animal.', destaque: true },
+          { id: 'atr-5', categoria: 'bromatologia', nome: 'Fibra em Detergente Neutro (FDN)', unidade: '%', spd: 46.2, spc: 52.8, descricao: 'Fração fibrosa total. No milho forrageiro, teores menores aumentam o consumo voluntário.', menorMelhor: true, destaque: false },
+          { id: 'atr-6', categoria: 'bromatologia', nome: 'Fibra em Detergente Ácido (FDA)', unidade: '%', spd: 24.8, spc: 29.5, descricao: 'Fração lignocelulósica indigestível. Teores menores significam maior digestibilidade ruminal.', menorMelhor: true, destaque: false },
+          { id: 'atr-7', categoria: 'biometria', nome: 'Altura Média de Plantas', unidade: 'm', spd: 2.45, spc: 2.15, descricao: 'Estatura média do solo ao ápice do pendão na maturidade fisiológica.', destaque: false },
+          { id: 'atr-8', categoria: 'biometria', nome: 'Altura de Inserção da 1ª Espiga', unidade: 'm', spd: 1.25, spc: 1.05, descricao: 'Distância do solo à inserção da espiga principal (ideal para colheita mecânica).', destaque: false },
+          { id: 'atr-9', categoria: 'biometria', nome: 'Diâmetro Médio do Colmo', unidade: 'mm', spd: 24.8, spc: 19.6, descricao: 'Espessura da base do colmo, associada à resistência ao acamamento e fluxo de nutrientes.', destaque: false },
+          { id: 'atr-10', categoria: 'espiga', nome: 'Comprimento Médio da Espiga', unidade: 'cm', spd: 18.6, spc: 15.2, descricao: 'Comprimento médio útil das espigas colhidas.', destaque: false },
+          { id: 'atr-11', categoria: 'espiga', nome: 'Número de Grãos por Espiga', unidade: 'grãos', spd: 585, spc: 470, descricao: 'Total médio de grãos férteis formados por espiga.', destaque: false },
+          { id: 'atr-12', categoria: 'espiga', nome: 'Peso de Mil Grãos (PMS)', unidade: 'g', spd: 338, spc: 298, descricao: 'Densidade e qualidade do enchimento dos grãos (peso de 1.000 grãos a 13% de umidade).', destaque: false },
+          { id: 'atr-13', categoria: 'solo_raiz', nome: 'Profundidade Efetiva Radicular', unidade: 'cm', spd: 68, spc: 40, descricao: 'Exploração radicular profunda no perfil do solo, proporcionada pela descompactação biológica da palhada.', destaque: true }
+        ],
+        planilhaCrescimento: {
+          titulo: 'Registro Biométrico e Acompanhamento de Crescimento do Milho',
+          safra: '2025/2026',
+          colunas: [
+            { id: 'data', label: 'Data Coleta', tipo: 'date' },
+            { id: 'dae', label: 'DAE (Dias)', tipo: 'number' },
+            { id: 'estadio', label: 'Estádio Fenológico', tipo: 'text' },
+            { id: 'sistema', label: 'Sistema de Manejo', tipo: 'select', opcoes: ['Plantio Direto (SPD)', 'Convencional (SPC)'] },
+            { id: 'altura', label: 'Altura Planta (cm)', tipo: 'number' },
+            { id: 'folhas', label: 'Nº Folhas Verdes', tipo: 'number' },
+            { id: 'diametro', label: 'Diâm. Colmo (mm)', tipo: 'number' },
+            { id: 'spad', label: 'Clorofila (SPAD)', tipo: 'number' },
+            { id: 'obs', label: 'Observações do Professor', tipo: 'text' }
+          ],
+          linhas: [
+            { id: 'row-1', data: '2026-02-15', dae: 15, estadio: 'V3', sistema: 'Plantio Direto (SPD)', altura: 28, folhas: 4, diametro: 9.5, spad: 42.5, obs: 'Excelente germinação e vigor inicial sob palhada de braquiária.' },
+            { id: 'row-2', data: '2026-02-15', dae: 15, estadio: 'V3', sistema: 'Convencional (SPC)', altura: 22, folhas: 3, diametro: 7.8, spad: 37.9, obs: 'Solo descoberto, formação de crosta superficial e rápida dessecação.' },
+            { id: 'row-3', data: '2026-03-02', dae: 30, estadio: 'V6', sistema: 'Plantio Direto (SPD)', altura: 82, folhas: 7, diametro: 17.2, spad: 52.0, obs: 'Adubação de cobertura aplicada. Raízes com forte penetração no perfil.' },
+            { id: 'row-4', data: '2026-03-02', dae: 30, estadio: 'V5-V6', sistema: 'Convencional (SPC)', altura: 65, folhas: 6, diametro: 14.1, spad: 44.8, obs: 'Leve enrolamento foliar em horários de pico térmico.' },
+            { id: 'row-5', data: '2026-03-22', dae: 50, estadio: 'V10', sistema: 'Plantio Direto (SPD)', altura: 176, folhas: 11, diametro: 23.4, spad: 57.5, obs: 'Fechamento do dossel pleno. Solo com umidade estável mesmo sem chuvas recentes.' },
+            { id: 'row-6', data: '2026-03-22', dae: 50, estadio: 'V9-V10', sistema: 'Convencional (SPC)', altura: 149, folhas: 9, diametro: 18.5, spad: 48.6, obs: 'Colmo mais fino e menor área foliar fotossinteticamente ativa.' },
+            { id: 'row-7', data: '2026-04-10', dae: 70, estadio: 'VT / R1', sistema: 'Plantio Direto (SPD)', altura: 242, folhas: 14, diametro: 25.0, spad: 59.8, obs: 'Pendoamento e polinização síncrona com emissão vigorosa de espigas.' },
+            { id: 'row-8', data: '2026-04-10', dae: 70, estadio: 'VT / R1', sistema: 'Convencional (SPC)', altura: 210, folhas: 12, diametro: 20.1, spad: 51.2, obs: 'Pendoamento menos uniforme, menor largura de folha da espiga.' }
+          ]
+        }
+      };
+    } else {
+      this.db.sipa.lavouraMilho.senhaAcesso = 'sipaamadeus0908';
+      if (!Array.isArray(this.db.sipa.lavouraMilho.atributosQualidade)) {
+        this.db.sipa.lavouraMilho.atributosQualidade = [];
+      }
+      if (!this.db.sipa.lavouraMilho.planilhaCrescimento || typeof this.db.sipa.lavouraMilho.planilhaCrescimento !== 'object') {
+        this.db.sipa.lavouraMilho.planilhaCrescimento = {
+          titulo: 'Registro Biométrico e Acompanhamento de Crescimento do Milho',
+          safra: '2025/2026',
+          colunas: [],
+          linhas: []
+        };
+      }
+    }
+
     if (!this.db.configuracoes || typeof this.db.configuracoes !== 'object') {
       this.db.configuracoes = window.AMADEUS_SEED.getInitialDatabase().configuracoes;
     }
