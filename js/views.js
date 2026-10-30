@@ -347,7 +347,7 @@ const AmadeusViews = {
       { id: 'atividades', icone: '🚜', label: 'Atividades Rurais', badge: db.atividades.length },
       { id: 'agendamento', icone: '📅', label: 'Agendamento & Calc', badge: db.agendamentos.length },
       { id: 'pessoas', icone: '👥', label: 'Pessoas & Biometria', badge: db.pessoas.length },
-      { id: 'animais', icone: '🐄', label: 'Animais & GMD', badge: db.animais.length },
+      { id: 'animais', icone: '🐄', label: 'Animais', badge: db.animais.length },
       { id: 'anotacoes', icone: '📝', label: 'Anotações Privadas', badge: notasVisiveis.length },
       { id: 'producao', icone: '🌾', label: 'Produção & Estoque', badge: db.producaoEstoqueFinanceiro.estoque.length },
       { id: 'relatorios', icone: '📑', label: 'Relatórios & PDFs', badge: 'PDF' },
@@ -2982,22 +2982,126 @@ const AmadeusViews = {
   },
 
   // ==========================================================================
-  // 6. CONTROLE DE ANIMAIS E DESEMPENHO ZOOTÉCNICO (GMD) (Seção 5)
+  // 6. CONTROLE DO MÓDULO ANIMAIS: REBANHO & GMD, SANIDADE & PASTAGENS/BEBEDOUROS
   // ==========================================================================
+  animaisSubTab: 'rebanho', // 'rebanho' (Animais & GMD) | 'sanidade' (Checklist Sanidade) | 'pastagens' (Condição Pasto, Bebedouro & Altura)
+
+  setAnimaisSubTab(aba) {
+    this.animaisSubTab = aba;
+    this.renderMainContent();
+  },
+
   viewAnimais() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
     const canCreate = core.canCreate();
-    const animais = core.db.animais;
+    const animais = core.db.animais || [];
+    const checkSanidade = core.db.checkSanidade || [];
+    const pastagens = core.db.pastagens || [];
+    const sub = this.animaisSubTab || 'rebanho';
+
     const selecionado = animais.find((a) => a.id === core.animalSelecionadoId) || animais[0];
     const m = selecionado ? core.calcularMetricasAnimal(selecionado) : null;
     const isFullscreen = core.chartFullscreenId === 'gmd-chart';
 
+    // KPIs Gerais do Módulo de Animais
+    const gmds = animais.map((a) => core.calcularMetricasAnimal(a).gmdGlobal);
+    const gmdMedio = gmds.length > 0 ? gmds.reduce((s, v) => s + v, 0) / gmds.length : 0;
+    const mediaAlturaPasto = pastagens.length > 0 ? pastagens.reduce((s, p) => s + (Number(p.alturaMediaCm) || 0), 0) / pastagens.length : 0;
+    const totalAreaPasto = pastagens.reduce((s, p) => s + (Number(p.areaHa) || 0), 0);
+
+    return `
+      <!-- Cabeçalho Institucional do Módulo de Animais -->
+      <div class="card" style="background:linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #0369a1 100%); color:#ffffff; border:none; margin-bottom:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.18); padding:0.22rem 0.7rem; border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.45rem;">
+              🐄 MÓDULO ANIMAIS · MANEJO PECUÁRIO, SANIDADE &amp; PASTAGENS
+            </div>
+            <h2 style="font-size:1.45rem; font-weight:800; margin-bottom:0.25rem; line-height:1.2;">
+              Animais — Rebanho, GMD, Checklist de Sanidade &amp; Manejo de Pasto
+            </h2>
+            <p style="font-size:0.84rem; color:#e0f2fe; max-width:780px;">
+              Gestão zootécnica integrada: curva de ganho de peso (GMD), prontuários sanitários, monitoramento de bebedouros e controle de altura e espécies de forrageiras no campus.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+            ${
+              canCreate
+                ? `
+              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalAnimal()">
+                ➕ Cadastrar Animal
+              </button>
+              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#1e3a8a; border:none;" onclick="AmadeusViews.abrirModalChecklistSanidade()">
+                📋 Novo Checklist Sanidade
+              </button>
+              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#15803d; border:none;" onclick="AmadeusViews.abrirModalAvaliacaoPastagem()">
+                🌱 Avaliar Piquete / Pastagem
+              </button>
+            `
+                : `<span class="status-pill">👁️ Somente Leitura</span>`
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs Zootécnicos e de Manejo do Rebanho -->
+      <div class="kpi-grid">
+        <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('rebanho')" style="cursor:pointer;">
+          <div class="kpi-label">Rebanho Monitorado</div>
+          <div class="kpi-value">${animais.length} animais</div>
+          <div class="kpi-sub">Lotes cadastrados no campus</div>
+        </div>
+        <div class="kpi-card blue" onclick="AmadeusViews.setAnimaisSubTab('rebanho')" style="cursor:pointer;">
+          <div class="kpi-label">GMD Médio do Rebanho</div>
+          <div class="kpi-value">+${gmdMedio.toFixed(3)} kg/d</div>
+          <div class="kpi-sub">Ganho médio diário consolidado</div>
+        </div>
+        <div class="kpi-card amber" onclick="AmadeusViews.setAnimaisSubTab('sanidade')" style="cursor:pointer;">
+          <div class="kpi-label">Checklists de Sanidade</div>
+          <div class="kpi-value">${checkSanidade.length}</div>
+          <div class="kpi-sub">Vistorias sanitárias e bebedouros</div>
+        </div>
+        <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('pastagens')" style="cursor:pointer;">
+          <div class="kpi-label">Pastagens &amp; Piquetes</div>
+          <div class="kpi-value">${pastagens.length} piquetes</div>
+          <div class="kpi-sub">Altura média: <strong>${mediaAlturaPasto.toFixed(0)} cm</strong> (${totalAreaPasto.toFixed(1)} ha)</div>
+        </div>
+      </div>
+
+      <!-- Sub-pastas / Abas Internas de Organização -->
+      <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:1.15rem; background:#ffffff; padding:0.5rem; border-radius:12px; border:1px solid var(--slate-200);">
+        <button class="btn btn-sm ${sub === 'rebanho' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setAnimaisSubTab('rebanho')">
+          📈 Rebanho &amp; Curvas de GMD (${animais.length})
+        </button>
+        <button class="btn btn-sm ${sub === 'sanidade' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setAnimaisSubTab('sanidade')">
+          🩺 Checklist de Sanidade &amp; Bebedouros (${checkSanidade.length})
+        </button>
+        <button class="btn btn-sm ${sub === 'pastagens' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setAnimaisSubTab('pastagens')">
+          🌾 Condição do Pasto, Altura &amp; Forrageiras (${pastagens.length})
+        </button>
+      </div>
+
+      ${
+        sub === 'rebanho'
+          ? this.renderSubTabRebanhoGMD(animais, selecionado, m, isFullscreen, canCreate, isAdmin)
+          : sub === 'sanidade'
+          ? this.renderSubTabChecklistSanidade(checkSanidade, canCreate, isAdmin)
+          : this.renderSubTabPastagensBebedouros(pastagens, canCreate, isAdmin)
+      }
+    `;
+  },
+
+  renderSubTabRebanhoGMD(animais, selecionado, m, isFullscreen, canCreate, isAdmin) {
+    const core = window.AmadeusCore;
     return `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">🐄 Controle de Animais e Desempenho Zootécnico (GMD)</div>
+            <div class="card-title">🐄 Desempenho Zootécnico &amp; Curva de Ganho Médio Diário (GMD)</div>
             <div style="font-size:0.8rem; color:var(--slate-600);">
               Fórmula oficial aplicada: <strong>GMD = (peso final − peso inicial) ÷ número de dias entre pesagens</strong> (expresso em <code>kg/dia</code>).
             </div>
@@ -3006,7 +3110,7 @@ const AmadeusViews = {
             ${
               canCreate
                 ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAnimal()">➕ Cadastrar Animal</button>`
-                : `<span class="status-pill">👁️ Somente Leitura</span>`
+                : ''
             }
             ${
               selecionado
@@ -3147,6 +3251,204 @@ const AmadeusViews = {
         `
             : ''
         }
+      </div>
+    `;
+  },
+
+  renderSubTabChecklistSanidade(checkSanidade, canCreate, isAdmin) {
+    const core = window.AmadeusCore;
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🩺 Checklist de Sanidade &amp; Vistoria de Bebedouros / Cochos</div>
+            <div style="font-size:0.8rem; color:var(--slate-600);">
+              Inspeção visual rotineira da sanidade dos animais, estado de hidratação, qualidade da água dos bebedouros e suplementação mineral
+            </div>
+          </div>
+          ${
+            canCreate
+              ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalChecklistSanidade()">➕ Novo Checklist Sanitário</button>`
+              : ''
+          }
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Lote / Animal</th>
+                <th>Estado Geral</th>
+                <th>Escore Corporal (ECC)</th>
+                <th>Vacinação / Vermifugação</th>
+                <th>Condição dos Bebedouros</th>
+                <th>Cochos &amp; Suplementação</th>
+                <th>Responsável</th>
+                ${isAdmin ? '<th>Ações</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                checkSanidade.length === 0
+                  ? `<tr><td colspan="9" style="text-align:center; padding:1.8rem; color:var(--slate-500);">Nenhum checklist sanitário cadastrado ainda. Clique em "➕ Novo Checklist Sanitário" para iniciar.</td></tr>`
+                  : checkSanidade
+                      .map((c) => {
+                        const badgeCor =
+                          c.estadoGeral === 'Ótimo'
+                            ? '#166534'
+                            : c.estadoGeral === 'Bom'
+                            ? '#0284c7'
+                            : c.estadoGeral === 'Regular'
+                            ? '#d97706'
+                            : '#dc2626';
+
+                        return `
+                        <tr>
+                          <td><strong>${core.formatDateBR(c.data)}</strong></td>
+                          <td><strong>${c.loteOuAnimal}</strong></td>
+                          <td>
+                            <span class="role-badge" style="background:${badgeCor}; color:#fff;">
+                              ${c.estadoGeral || 'Normal'}
+                            </span>
+                          </td>
+                          <td>${c.escoreCorporal || '—'}</td>
+                          <td style="font-size:0.78rem;">${c.vacinacaoVermifugacao || '—'}</td>
+                          <td><strong style="color:#0369a1;">💧 ${c.situacaoBebedouros || 'Operacional'}</strong></td>
+                          <td style="font-size:0.78rem;">${c.limpezaCocho || '—'}</td>
+                          <td>${c.responsavel}</td>
+                          ${
+                            isAdmin
+                              ? `
+                            <td>
+                              <div style="display:flex; gap:0.25rem;">
+                                <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalChecklistSanidade('${c.id}')" title="Editar">✏️</button>
+                                <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirChecklistSanidade('${c.id}')" title="Excluir">🗑️</button>
+                              </div>
+                            </td>
+                          `
+                              : ''
+                          }
+                        </tr>
+                        ${
+                          c.sinaisClinicos || c.observacoes
+                            ? `
+                          <tr style="background:var(--slate-50); font-size:0.75rem;">
+                            <td colspan="${isAdmin ? 9 : 8}" style="padding:0.4rem 0.8rem; color:var(--slate-600);">
+                              🔍 <strong>Sinais Clínicos / Obs:</strong> ${c.sinaisClinicos || 'Nenhum sintoma anormal observado.'} &nbsp;·&nbsp; ${c.observacoes || ''}
+                            </td>
+                          </tr>
+                        `
+                            : ''
+                        }
+                      `;
+                      })
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSubTabPastagensBebedouros(pastagens, canCreate, isAdmin) {
+    const core = window.AmadeusCore;
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🌾 Cadastro de Forrageiras, Altura Média do Pasto &amp; Bebedouros</div>
+            <div style="font-size:0.8rem; color:var(--slate-600);">
+              Controle por piquete com indicação de forrageiras (<em>Brachiaria ruziziensis</em>, <em>B. humidicola</em>, <em>B. brizantha cv. Marandu/Xaraés</em>, etc.), altura de entrada/saída, lotação e manutenção de água
+            </div>
+          </div>
+          ${
+            canCreate
+              ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAvaliacaoPastagem()">➕ Cadastrar Piquete / Pastagem</button>`
+              : ''
+          }
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Piquete / Local</th>
+                <th>Área (ha)</th>
+                <th>Tipo de Pastagem / Forrageira</th>
+                <th>Altura Média (cm)</th>
+                <th>Meta Entrada / Saída (cm)</th>
+                <th>Condição Geral</th>
+                <th>Cobertura Solo (%)</th>
+                <th>Status Bebedouro</th>
+                <th>Carga / Animais</th>
+                <th>Responsável</th>
+                ${isAdmin ? '<th>Ações</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pastagens.length === 0
+                  ? `<tr><td colspan="11" style="text-align:center; padding:1.8rem; color:var(--slate-500);">Nenhum piquete avaliado ainda. Clique em "➕ Cadastrar Piquete / Pastagem" para iniciar.</td></tr>`
+                  : pastagens
+                      .map((p) => {
+                        const altura = Number(p.alturaMediaCm) || 0;
+                        const ent = Number(p.alturaEntradaCm) || 30;
+                        const sai = Number(p.alturaSaidaCm) || 15;
+                        const statusAltura =
+                          altura >= ent
+                            ? '🟢 Ponto de Entrada (Ideal p/ pastejo)'
+                            : altura <= sai
+                            ? '🔴 Ponto de Saída (Retirar animais)'
+                            : '🟡 Em Pastejo / Rebrota';
+
+                        return `
+                        <tr>
+                          <td><strong>${p.piqueteNome}</strong><br/><small style="color:var(--slate-500);">Data: ${core.formatDateBR(p.dataAvaliacao)}</small></td>
+                          <td><strong>${Number(p.areaHa || 0).toFixed(2)} ha</strong></td>
+                          <td><strong style="color:var(--green-900); font-size:0.9rem;">${p.tipoPastagem}</strong></td>
+                          <td>
+                            <strong style="font-size:1.05rem; color:#0369a1;">${altura} cm</strong><br/>
+                            <small style="font-size:0.72rem; color:var(--slate-600);">${statusAltura}</small>
+                          </td>
+                          <td style="font-size:0.78rem;">Entrada: <strong>${ent} cm</strong><br/>Saída: <strong>${sai} cm</strong></td>
+                          <td><span class="role-badge role-comum">${p.condicaoGeral || 'Boa'}</span></td>
+                          <td><strong style="color:var(--green-700);">${Number(p.coberturaSoloPct || 0).toFixed(0)}%</strong></td>
+                          <td><span style="font-size:0.8rem; color:#0c4a6e;">💧 ${p.statusBebedouro || 'Operacional'}</span></td>
+                          <td><strong>${p.cargaAnimalCabecas || 0} cab.</strong><br/><small style="color:var(--slate-500);">${p.diasOcupacao || 0} dias ocupado</small></td>
+                          <td>${p.responsavel}</td>
+                          ${
+                            isAdmin
+                              ? `
+                            <td>
+                              <div style="display:flex; gap:0.25rem;">
+                                <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAvaliacaoPastagem('${p.id}')" title="Editar">✏️</button>
+                                <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirAvaliacaoPastagem('${p.id}')" title="Excluir">🗑️</button>
+                              </div>
+                            </td>
+                          `
+                              : ''
+                          }
+                        </tr>
+                        ${
+                          p.observacoes
+                            ? `
+                          <tr style="background:var(--slate-50); font-size:0.75rem;">
+                            <td colspan="${isAdmin ? 11 : 10}" style="padding:0.4rem 0.8rem; color:var(--slate-600);">
+                              📝 <strong>Observações Técnicas de Manejo:</strong> ${p.observacoes}
+                            </td>
+                          </tr>
+                        `
+                            : ''
+                        }
+                      `;
+                      })
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
   },
@@ -3369,6 +3671,307 @@ const AmadeusViews = {
     animal.pesagens = animal.pesagens.filter((p) => p.id !== pesagemId);
     core.saveDatabase();
     core.toast('Pesagem excluída e GMD recalculado.');
+    this.renderApp();
+  },
+
+  // --------------------------------------------------------------------------
+  // Modais de Sanidade e Bebedouros
+  // --------------------------------------------------------------------------
+  abrirModalChecklistSanidade(id = null) {
+    const core = window.AmadeusCore;
+    if (id && !core.requireAdmin('editar checklist sanitário')) return;
+    if (!id && !core.requireCreate('cadastrar checklist sanitário')) return;
+    const lista = core.db.checkSanidade || [];
+    const ex = id ? lista.find((x) => x.id === id) : null;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const respPadrao = core.currentUser?.nome || 'Guilherme Dias Pereira';
+
+    const item = ex || {
+      data: hoje,
+      loteOuAnimal: 'Lote Experimental 01 (Bovinos)',
+      estadoGeral: 'Ótimo',
+      escoreCorporal: '3.5 / 5.0 (Adequado)',
+      vacinacaoVermifugacao: 'Em dia',
+      sinaisClinicos: 'Nenhum sinal de febre, tristeza ou claudicação',
+      situacaoBebedouros: 'Bebedouros limpos, água fresca e boia regulada',
+      limpezaCocho: 'Cocho limpo com sal mineral reposto',
+      responsavel: respPadrao,
+      observacoes: ''
+    };
+
+    this.abrirModalGenerico(
+      ex ? '✏️ Editar Checklist de Sanidade' : '📋 Novo Checklist de Sanidade & Bebedouros',
+      `
+        <form onsubmit="AmadeusViews.salvarChecklistSanidade(event, '${id || ''}')">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Data da Vistoria *</label>
+              <input type="date" id="san-data" class="form-control" value="${item.data}" required />
+            </div>
+            <div class="form-group">
+              <label>Lote ou Animal Avaliado *</label>
+              <input type="text" id="san-lote" class="form-control" value="${item.loteOuAnimal}" placeholder="Ex: Lote Bovino 01, Brinco 105..." required />
+            </div>
+            <div class="form-group">
+              <label>Estado Geral de Saúde *</label>
+              <select id="san-estado" class="form-control" required>
+                <option value="Ótimo" ${item.estadoGeral === 'Ótimo' ? 'selected' : ''}>🟢 Ótimo (Ativo, vigoroso e alimentando bem)</option>
+                <option value="Bom" ${item.estadoGeral === 'Bom' ? 'selected' : ''}>🔵 Bom (Comportamento normal)</option>
+                <option value="Regular" ${item.estadoGeral === 'Regular' ? 'selected' : ''}>🟡 Regular (Necessita observação)</option>
+                <option value="Alerta" ${item.estadoGeral === 'Alerta' ? 'selected' : ''}>🔴 Alerta / Enfermidade (Isolar animal)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Escore de Condição Corporal (ECC) *</label>
+              <select id="san-ecc" class="form-control" required>
+                <option value="1.0 - 2.0 (Muito Magro)" ${item.escoreCorporal.includes('Muito Magro') ? 'selected' : ''}>1.0 - 2.0 (Muito Magro / Desnutrido)</option>
+                <option value="2.5 - 3.0 (Moderado)" ${item.escoreCorporal.includes('Moderado') ? 'selected' : ''}>2.5 - 3.0 (Moderado)</option>
+                <option value="3.5 / 5.0 (Adequado)" ${item.escoreCorporal.includes('Adequado') ? 'selected' : ''}>3.5 / 5.0 (Adequado / Ideal p/ Pastejo)</option>
+                <option value="4.0 - 5.0 (Gordo)" ${item.escoreCorporal.includes('Gordo') ? 'selected' : ''}>4.0 - 5.0 (Gordo / Acabamento)</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Status Vacinação &amp; Vermifugação</label>
+              <input type="text" id="san-vac" class="form-control" value="${item.vacinacaoVermifugacao}" placeholder="Ex: Aftosa aplicada, vermífugo aos 90 dias..." />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Sinais Clínicos / Inspeção Visual</label>
+              <input type="text" id="san-sinais" class="form-control" value="${item.sinaisClinicos}" placeholder="Ex: Olhos brilhantes, sem corrimento nasal, cascos íntegros..." />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Condição dos Bebedouros (Água &amp; Vazão) *</label>
+              <input type="text" id="san-bebedouro" class="form-control" value="${item.situacaoBebedouros}" placeholder="Ex: Limpos, água limpa e fresca, vazão contínua..." required />
+            </div>
+            <div class="form-group">
+              <label>Limpeza de Cochos &amp; Mineralização</label>
+              <input type="text" id="san-cocho" class="form-control" value="${item.limpezaCocho}" placeholder="Ex: Cocho limpo, sal proteinado reposto..." />
+            </div>
+            <div class="form-group">
+              <label>Responsável Técnico / Aluno *</label>
+              <input type="text" id="san-resp" class="form-control" value="${item.responsavel}" required />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Observações Adicionais</label>
+            <textarea id="san-obs" class="form-control" rows="2" placeholder="Observações de conduta, tempo de ruminação ou encaminhamentos...">${item.observacoes || ''}</textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Checklist Sanitário</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarChecklistSanidade(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    if (!Array.isArray(core.db.checkSanidade)) core.db.checkSanidade = [];
+
+    const novo = {
+      id: idExistente || 'san-' + Date.now(),
+      data: document.getElementById('san-data').value,
+      loteOuAnimal: document.getElementById('san-lote').value.trim(),
+      estadoGeral: document.getElementById('san-estado').value,
+      escoreCorporal: document.getElementById('san-ecc').value,
+      vacinacaoVermifugacao: document.getElementById('san-vac').value.trim(),
+      sinaisClinicos: document.getElementById('san-sinais').value.trim(),
+      situacaoBebedouros: document.getElementById('san-bebedouro').value.trim(),
+      limpezaCocho: document.getElementById('san-cocho').value.trim(),
+      responsavel: document.getElementById('san-resp').value.trim(),
+      observacoes: document.getElementById('san-obs').value.trim()
+    };
+
+    if (idExistente) {
+      const idx = core.db.checkSanidade.findIndex((x) => x.id === idExistente);
+      if (idx !== -1) core.db.checkSanidade[idx] = novo;
+    } else {
+      core.db.checkSanidade.unshift(novo);
+    }
+
+    core.saveDatabase(`Salvou checklist de sanidade: ${novo.loteOuAnimal}`);
+    core.toast('🩺 Checklist sanitário registrado com sucesso!');
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  excluirChecklistSanidade(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir checklist sanitário')) return;
+    if (!confirm('Deseja excluir este registro de checklist sanitário?')) return;
+    core.db.checkSanidade = (core.db.checkSanidade || []).filter((x) => x.id !== id);
+    core.saveDatabase('Excluiu checklist sanitário');
+    core.toast('Checklist sanitário excluído.');
+    this.renderApp();
+  },
+
+  // --------------------------------------------------------------------------
+  // Modais de Cadastro de Pastagens, Altura & Bebedouros
+  // --------------------------------------------------------------------------
+  abrirModalAvaliacaoPastagem(id = null) {
+    const core = window.AmadeusCore;
+    if (id && !core.requireAdmin('editar avaliação de pastagem')) return;
+    if (!id && !core.requireCreate('cadastrar avaliação de pastagem')) return;
+    const lista = core.db.pastagens || [];
+    const ex = id ? lista.find((x) => x.id === id) : null;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const respPadrao = core.currentUser?.nome || 'Guilherme Dias Pereira';
+
+    const item = ex || {
+      piqueteNome: 'Piquete 01 — ILP Campus IF Baiano',
+      areaHa: 1.5,
+      tipoPastagem: 'Brachiaria ruziziensis',
+      dataAvaliacao: hoje,
+      alturaMediaCm: 30,
+      alturaEntradaCm: 30,
+      alturaSaidaCm: 15,
+      condicaoGeral: 'Excelente',
+      coberturaSoloPct: 90,
+      statusBebedouro: 'Operacional (Água limpa e fresca)',
+      cargaAnimalCabecas: 4,
+      diasOcupacao: 10,
+      responsavel: respPadrao,
+      observacoes: ''
+    };
+
+    this.abrirModalGenerico(
+      ex ? '✏️ Editar Avaliação de Pastagem' : '🌾 Cadastrar Forrageira, Altura do Pasto & Bebedouro',
+      `
+        <form onsubmit="AmadeusViews.salvarAvaliacaoPastagem(event, '${id || ''}')">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Identificação do Piquete *</label>
+              <input type="text" id="past-piquete" class="form-control" value="${item.piqueteNome}" placeholder="Ex: Piquete 01, Piquete ILP..." required />
+            </div>
+            <div class="form-group">
+              <label>Área do Piquete (ha) *</label>
+              <input type="number" step="0.05" id="past-area" class="form-control" value="${item.areaHa}" required />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Tipo de Pastagem / Espécie Forrageira *</label>
+              <select id="past-tipo-select" class="form-control" onchange="if(this.value!=='outro'){document.getElementById('past-tipo').value=this.value;}">
+                <option value="Brachiaria ruziziensis" ${item.tipoPastagem.includes('ruziziensis') ? 'selected' : ''}>Brachiaria ruziziensis (Ideal p/ SPD e consórcio com Milho)</option>
+                <option value="Brachiaria humidicola (Quicuio-da-Amazônia)" ${item.tipoPastagem.includes('humidicola') ? 'selected' : ''}>Brachiaria humidicola (Quicuio-da-Amazônia / Áreas úmidas)</option>
+                <option value="Brachiaria brizantha cv. Xaraés (Toledo)" ${item.tipoPastagem.includes('Xaraés') || item.tipoPastagem.includes('xaraes') ? 'selected' : ''}>Brachiaria brizantha cv. Xaraés / Toledo (Rápida rebrota)</option>
+                <option value="Brachiaria brizantha cv. Marandu" ${item.tipoPastagem.includes('Marandu') ? 'selected' : ''}>Brachiaria brizantha cv. Marandu (Braquiarão)</option>
+                <option value="Panicum maximum cv. Mombaça" ${item.tipoPastagem.includes('Mombaça') ? 'selected' : ''}>Panicum maximum cv. Mombaça</option>
+                <option value="Panicum maximum cv. BRS Zuri" ${item.tipoPastagem.includes('Zuri') ? 'selected' : ''}>Panicum maximum cv. BRS Zuri</option>
+                <option value="Panicum maximum cv. BRS Tamani" ${item.tipoPastagem.includes('Tamani') ? 'selected' : ''}>Panicum maximum cv. BRS Tamani</option>
+                <option value="Andropogon gayanus" ${item.tipoPastagem.includes('Andropogon') ? 'selected' : ''}>Andropogon gayanus</option>
+                <option value="Capim Elefante BRS Capiaçu" ${item.tipoPastagem.includes('Capiaçu') ? 'selected' : ''}>Capim Elefante BRS Capiaçu (Capineira)</option>
+                <option value="outro">Outra espécie forrageira (digitar abaixo)</option>
+              </select>
+              <input type="text" id="past-tipo" class="form-control" style="margin-top:0.35rem;" value="${item.tipoPastagem}" placeholder="Nome da espécie / consórcio forrageiro" required />
+            </div>
+            <div class="form-group">
+              <label>Data da Medição *</label>
+              <input type="date" id="past-data" class="form-control" value="${item.dataAvaliacao}" required />
+            </div>
+            <div class="form-group">
+              <label>Altura Média Atual do Pasto (cm) *</label>
+              <input type="number" step="1" id="past-alt" class="form-control" value="${item.alturaMediaCm}" required />
+            </div>
+            <div class="form-group">
+              <label>Altura Alvo de Entrada (cm) *</label>
+              <input type="number" step="1" id="past-alt-ent" class="form-control" value="${item.alturaEntradaCm}" required />
+            </div>
+            <div class="form-group">
+              <label>Altura Alvo de Saída / Resíduo (cm) *</label>
+              <input type="number" step="1" id="past-alt-sai" class="form-control" value="${item.alturaSaidaCm}" required />
+            </div>
+            <div class="form-group">
+              <label>Condição Geral do Pasto *</label>
+              <select id="past-cond" class="form-control" required>
+                <option value="Excelente" ${item.condicaoGeral === 'Excelente' ? 'selected' : ''}>🟢 Excelente (Densa, sem invasoras)</option>
+                <option value="Boa" ${item.condicaoGeral === 'Boa' ? 'selected' : ''}>🔵 Boa (Boa cobertura vegetal)</option>
+                <option value="Regular" ${item.condicaoGeral === 'Regular' ? 'selected' : ''}>🟡 Regular (Presença de invasoras/falhas)</option>
+                <option value="Degradada / Rapada" ${item.condicaoGeral.includes('Rapada') ? 'selected' : ''}>🔴 Degradada / Superpastejada</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Taxa de Cobertura do Solo (%)</label>
+              <input type="number" step="1" max="100" id="past-cob" class="form-control" value="${item.coberturaSoloPct}" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Condição &amp; Status do Bebedouro *</label>
+              <select id="past-bebedouro-sel" class="form-control" onchange="document.getElementById('past-bebedouro').value=this.value;">
+                <option value="Operacional (Água limpa, fresca e abundante)">🟢 Operacional (Água limpa, fresca e abundante)</option>
+                <option value="Operacional (Boia regulada, necessita limpeza leve)">🟡 Operacional (Boia regulada, necessita limpeza leve)</option>
+                <option value="Vazamento / Boia com defeito">🟠 Manutenção necessária (Vazamento ou boia emperrada)</option>
+                <option value="Seco / Sem abastecimento">🔴 Alerta (Seco / Sem abastecimento de água)</option>
+              </select>
+              <input type="text" id="past-bebedouro" class="form-control" style="margin-top:0.35rem;" value="${item.statusBebedouro}" placeholder="Status e observações do bebedouro" required />
+            </div>
+            <div class="form-group">
+              <label>Número de Cabeças / Carga</label>
+              <input type="number" step="1" id="past-carga" class="form-control" value="${item.cargaAnimalCabecas}" />
+            </div>
+            <div class="form-group">
+              <label>Dias de Ocupação Atual</label>
+              <input type="number" step="1" id="past-dias" class="form-control" value="${item.diasOcupacao}" />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Responsável pela Avaliação *</label>
+              <input type="text" id="past-resp" class="form-control" value="${item.responsavel}" required />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Observações Técnicas de Manejo e Pastejo</label>
+            <textarea id="past-obs" class="form-control" rows="2" placeholder="Rebrota, uniformidade de pastejo, presença de fezes, adubação de pastagem...">${item.observacoes || ''}</textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Piquete &amp; Pastagem</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarAvaliacaoPastagem(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    if (!Array.isArray(core.db.pastagens)) core.db.pastagens = [];
+
+    const novo = {
+      id: idExistente || 'past-' + Date.now(),
+      piqueteNome: document.getElementById('past-piquete').value.trim(),
+      areaHa: parseFloat(document.getElementById('past-area').value) || 0,
+      tipoPastagem: document.getElementById('past-tipo').value.trim(),
+      dataAvaliacao: document.getElementById('past-data').value,
+      alturaMediaCm: parseFloat(document.getElementById('past-alt').value) || 0,
+      alturaEntradaCm: parseFloat(document.getElementById('past-alt-ent').value) || 30,
+      alturaSaidaCm: parseFloat(document.getElementById('past-alt-sai').value) || 15,
+      condicaoGeral: document.getElementById('past-cond').value,
+      coberturaSoloPct: parseFloat(document.getElementById('past-cob').value) || 0,
+      statusBebedouro: document.getElementById('past-bebedouro').value.trim(),
+      cargaAnimalCabecas: parseInt(document.getElementById('past-carga').value, 10) || 0,
+      diasOcupacao: parseInt(document.getElementById('past-dias').value, 10) || 0,
+      responsavel: document.getElementById('past-resp').value.trim(),
+      observacoes: document.getElementById('past-obs').value.trim()
+    };
+
+    if (idExistente) {
+      const idx = core.db.pastagens.findIndex((x) => x.id === idExistente);
+      if (idx !== -1) core.db.pastagens[idx] = novo;
+    } else {
+      core.db.pastagens.unshift(novo);
+    }
+
+    core.saveDatabase(`Salvou avaliação de pastagem: ${novo.piqueteNome} (${novo.tipoPastagem})`);
+    core.toast('🌾 Avaliação de pastagem e forrageira salva com sucesso!');
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  excluirAvaliacaoPastagem(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir avaliação de pastagem')) return;
+    if (!confirm('Deseja excluir este registro de pastagem?')) return;
+    core.db.pastagens = (core.db.pastagens || []).filter((x) => x.id !== id);
+    core.saveDatabase('Excluiu avaliação de pastagem');
+    core.toast('Avaliação de pastagem removida.');
     this.renderApp();
   },
 
