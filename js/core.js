@@ -260,6 +260,41 @@ const AmadeusCore = {
         adminUser.senha = '123';
       }
     }
+
+    // Garante que a conta do Professor Charles Leonel sempre exista e aceite login 'charles', 'professor', 'prof.charles' ou e-mail
+    let profUser = this.db.usuarios.find(
+      (u) =>
+        u.id === 'usr-prof-1' ||
+        u.login === 'charles' ||
+        (u.email || '').toLowerCase() === 'charles.leonel@ifbaiano.edu.br' ||
+        (u.nome || '').toLowerCase().includes('charles')
+    );
+    if (!profUser) {
+      profUser = {
+        id: 'usr-prof-1',
+        nome: 'Professor Charles Leonel',
+        login: 'charles',
+        aliasesLogin: ['charles', 'professor', 'prof.charles', 'profcharles', 'charles.leonel@ifbaiano.edu.br'],
+        email: 'charles.leonel@ifbaiano.edu.br',
+        senhaHash: '123',
+        senha: '123',
+        perfil: 'admin',
+        statusAcesso: 'aprovado',
+        cargo: 'Docente e Coordenador de Pesquisa',
+        ativo: true,
+        permissoes: ['tudo', 'exportar', 'admin', 'portal']
+      };
+      this.db.usuarios.push(profUser);
+    } else {
+      profUser.perfil = 'admin';
+      profUser.statusAcesso = 'aprovado';
+      profUser.ativo = true;
+      profUser.aliasesLogin = ['charles', 'professor', 'prof.charles', 'profcharles', 'charles.leonel@ifbaiano.edu.br'];
+      if (!profUser.senhaHash) {
+        profUser.senhaHash = '123';
+        profUser.senha = '123';
+      }
+    }
   },
 
   loadDatabase() {
@@ -366,13 +401,19 @@ const AmadeusCore = {
       if (u.id === 'usr-admin-1' && ['admin', 'admim', 'guilherme', 'admin@amadeus.org.br', 'guilherme@amadeus.rural'].includes(clean)) {
         return true;
       }
+      if (
+        (u.id === 'usr-prof-1' || u.login === 'charles' || (u.nome || '').toLowerCase().includes('charles')) &&
+        ['charles', 'professor', 'prof.charles', 'profcharles', 'prof. charles', 'profdrcharles', 'charles.leonel@ifbaiano.edu.br', 'professor charles', 'charles leonel'].includes(clean)
+      ) {
+        return true;
+      }
       return uLogin === clean || uEmail === clean || aliases.includes(clean);
     });
 
     const userPass = user ? (user.senhaHash || user.senha || '123') : null;
-    const isAdminMasterPass = user && user.id === 'usr-admin-1' && (passClean === '123' || passClean === 'admin123');
+    const isMasterOrDefaultPass = passClean === '123' || (user && user.id === 'usr-admin-1' && passClean === 'admin123');
 
-    if (!user || (userPass !== passClean && !isAdminMasterPass && passClean !== '123')) {
+    if (!user || (userPass !== passClean && !isMasterOrDefaultPass)) {
       this.toast('Login/E-mail ou senha incorretos.', 'erro');
       return false;
     }
