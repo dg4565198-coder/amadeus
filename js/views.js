@@ -2984,7 +2984,7 @@ const AmadeusViews = {
   // ==========================================================================
   // 6. CONTROLE DO MÓDULO ANIMAIS: REBANHO & GMD, SANIDADE & PASTAGENS/BEBEDOUROS
   // ==========================================================================
-  animaisSubTab: 'rebanho', // 'rebanho' (Animais & GMD) | 'sanidade' (Checklist Sanidade) | 'pastagens' (Condição Pasto, Bebedouro & Altura)
+  animaisSubTab: 'rebanho', // 'rebanho' | 'lotes' | 'sanidade' | 'pastagens'
 
   setAnimaisSubTab(aba) {
     this.animaisSubTab = aba;
@@ -2996,6 +2996,7 @@ const AmadeusViews = {
     const isAdmin = core.isAdmin();
     const canCreate = core.canCreate();
     const animais = core.db.animais || [];
+    const lotesPasto = core.db.lotesPasto || [];
     const checkSanidade = core.db.checkSanidade || [];
     const pastagens = core.db.pastagens || [];
     const sub = this.animaisSubTab || 'rebanho';
@@ -3009,6 +3010,7 @@ const AmadeusViews = {
     const gmdMedio = gmds.length > 0 ? gmds.reduce((s, v) => s + v, 0) / gmds.length : 0;
     const mediaAlturaPasto = pastagens.length > 0 ? pastagens.reduce((s, p) => s + (Number(p.alturaMediaCm) || 0), 0) / pastagens.length : 0;
     const totalAreaPasto = pastagens.reduce((s, p) => s + (Number(p.areaHa) || 0), 0);
+    const totalSemLote = animais.filter((a) => !a.lote || a.lote.trim() === '' || a.lote.toLowerCase() === 'sem lote').length;
 
     return `
       <!-- Cabeçalho Institucional do Módulo de Animais -->
@@ -3016,13 +3018,13 @@ const AmadeusViews = {
         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
           <div>
             <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.18); padding:0.22rem 0.7rem; border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.45rem;">
-              🐄 MÓDULO ANIMAIS · MANEJO PECUÁRIO, SANIDADE &amp; PASTAGENS
+              🐄 MÓDULO ANIMAIS · MANEJO PECUÁRIO, LOTES &amp; PASTAGENS
             </div>
             <h2 style="font-size:1.45rem; font-weight:800; margin-bottom:0.25rem; line-height:1.2;">
-              Animais — Rebanho, GMD, Checklist de Sanidade &amp; Manejo de Pasto
+              Animais — Rebanho, GMD, Montagem de Lotes, Sanidade &amp; Pastagens
             </h2>
             <p style="font-size:0.84rem; color:#e0f2fe; max-width:780px;">
-              Gestão zootécnica integrada: curva de ganho de peso (GMD), prontuários sanitários, monitoramento de bebedouros e controle de altura e espécies de forrageiras no campus.
+              Gestão zootécnica integrada: curva de ganho de peso (GMD), montagem de lotes exclusivos por pasto, checklist sanitário de bebedouros e controle de forrageiras no campus.
             </p>
           </div>
           <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
@@ -3032,7 +3034,10 @@ const AmadeusViews = {
               <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalAnimal()">
                 ➕ Cadastrar Animal
               </button>
-              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#1e3a8a; border:none;" onclick="AmadeusViews.abrirModalChecklistSanidade()">
+              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#1e40af; border:none;" onclick="AmadeusViews.abrirModalCriarLotePasto()">
+                🏷️ Novo Lote de Pasto
+              </button>
+              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#0369a1; border:none;" onclick="AmadeusViews.abrirModalChecklistSanidade()">
                 📋 Novo Checklist Sanidade
               </button>
               <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#15803d; border:none;" onclick="AmadeusViews.abrirModalAvaliacaoPastagem()">
@@ -3050,7 +3055,12 @@ const AmadeusViews = {
         <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('rebanho')" style="cursor:pointer;">
           <div class="kpi-label">Rebanho Monitorado</div>
           <div class="kpi-value">${animais.length} animais</div>
-          <div class="kpi-sub">Lotes cadastrados no campus</div>
+          <div class="kpi-sub">Cadastrados no campus</div>
+        </div>
+        <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('lotes')" style="cursor:pointer; border-left:4px solid #f59e0b;">
+          <div class="kpi-label">Lotes Formados</div>
+          <div class="kpi-value">${lotesPasto.length} lotes</div>
+          <div class="kpi-sub">${totalSemLote > 0 ? `⚠️ ${totalSemLote} animal(is) sem lote` : 'Todos alocados em lote único'}</div>
         </div>
         <div class="kpi-card blue" onclick="AmadeusViews.setAnimaisSubTab('rebanho')" style="cursor:pointer;">
           <div class="kpi-label">GMD Médio do Rebanho</div>
@@ -3075,6 +3085,10 @@ const AmadeusViews = {
           onclick="AmadeusViews.setAnimaisSubTab('rebanho')">
           📈 Rebanho &amp; Curvas de GMD (${animais.length})
         </button>
+        <button class="btn btn-sm ${sub === 'lotes' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setAnimaisSubTab('lotes')">
+          🏷️ Formação &amp; Transferência de Lotes (${lotesPasto.length})
+        </button>
         <button class="btn btn-sm ${sub === 'sanidade' ? 'btn-primary' : 'btn-secondary'}"
           onclick="AmadeusViews.setAnimaisSubTab('sanidade')">
           🩺 Checklist de Sanidade &amp; Bebedouros (${checkSanidade.length})
@@ -3088,6 +3102,8 @@ const AmadeusViews = {
       ${
         sub === 'rebanho'
           ? this.renderSubTabRebanhoGMD(animais, selecionado, m, isFullscreen, canCreate, isAdmin)
+          : sub === 'lotes'
+          ? this.renderSubTabLotesPasto(animais, lotesPasto, pastagens, canCreate, isAdmin)
           : sub === 'sanidade'
           ? this.renderSubTabChecklistSanidade(checkSanidade, canCreate, isAdmin)
           : this.renderSubTabPastagensBebedouros(pastagens, canCreate, isAdmin)
@@ -3253,6 +3269,675 @@ const AmadeusViews = {
         }
       </div>
     `;
+  },
+
+  renderSubTabLotesPasto(animais, lotesPasto, pastagens, canCreate, isAdmin) {
+    const core = window.AmadeusCore;
+    const nomesLotes = lotesPasto.map((l) => l.nome);
+
+    return `
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:0.6rem;">
+          <div>
+            <div class="card-title">🏷️ Formação de Lotes de Animais por Piquete / Pasto</div>
+            <div style="font-size:0.8rem; color:var(--slate-600);">
+              Organização exclusiva: <strong>cada animal pertence a apenas um lote por vez</strong>. Monte lotes, aloque em pastos específicos e transfira animais individualmente ou em grupo.
+            </div>
+          </div>
+          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+            ${
+              canCreate
+                ? `
+              <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalCriarLotePasto()">
+                ➕ Criar Novo Lote de Pasto
+              </button>
+            `
+                : ''
+            }
+          </div>
+        </div>
+
+        <!-- Painel de Ações Rápidas de Transferência / Remoção em Grupo -->
+        <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px; padding:0.9rem; margin-bottom:1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.65rem;">
+            <div>
+              <strong style="font-size:0.88rem; color:var(--slate-800);">⚡ Ação em Grupo com Animais Selecionados:</strong>
+              <div style="font-size:0.75rem; color:var(--slate-500);">
+                Marque os animais nas tabelas abaixo para transferi-los juntos ou deixá-los sem lote
+              </div>
+            </div>
+            <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+              <select id="lote-destino-grupo" class="form-control" style="max-width:260px; font-size:0.82rem;">
+                <option value="">-- Escolher Lote de Destino --</option>
+                ${lotesPasto.map((l) => `<option value="${l.nome}">${l.nome} (${l.pastoDestino || 'Sem pasto'})</option>`).join('')}
+              </select>
+              ${
+                canCreate
+                  ? `
+                <button class="btn btn-sm btn-primary" onclick="AmadeusViews.transferirGrupoAnimaisParaLote()">
+                  ➡️ Transferir Selecionados
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.removerGrupoAnimaisDeLote()" style="color:#b91c1c;">
+                  🚫 Deixar Selecionados Sem Lote
+                </button>
+              `
+                  : ''
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de Lotes Ativos -->
+        <div style="display:flex; flex-direction:column; gap:1.2rem;">
+          ${
+            lotesPasto.length === 0
+              ? `
+            <div style="text-align:center; padding:2rem; color:var(--slate-500); background:#fff; border-radius:10px; border:1px dashed var(--slate-300);">
+              Nenhum lote criado ainda. Clique em "➕ Criar Novo Lote de Pasto" para montar seu primeiro lote!
+            </div>
+          `
+              : lotesPasto
+                  .map((lote) => {
+                    const animaisDoLote = animais.filter((a) => (a.lote || '').trim().toLowerCase() === lote.nome.trim().toLowerCase());
+                    const pesoMedio =
+                      animaisDoLote.length > 0
+                        ? animaisDoLote.reduce((s, a) => s + (core.calcularMetricasAnimal(a).pesoAtual || 0), 0) / animaisDoLote.length
+                        : 0;
+
+                    return `
+                    <div class="card" style="margin-bottom:0; border-left:6px solid #1e40af; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                      <div class="card-header" style="flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid var(--slate-100); padding-bottom:0.75rem;">
+                        <div>
+                          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                            <span style="font-size:1.15rem; font-weight:800; color:var(--slate-900);">${lote.nome}</span>
+                            <span class="role-badge" style="background:#1e40af; color:#fff; font-size:0.75rem;">${animaisDoLote.length} animal(is)</span>
+                            <span class="role-badge" style="background:#0284c7; color:#fff; font-size:0.75rem;">🌾 ${lote.pastoDestino || 'Pasto não atribuído'}</span>
+                          </div>
+                          <div style="font-size:0.78rem; color:var(--slate-600); margin-top:0.25rem;">
+                            🎯 Finalidade: <strong>${lote.finalidade || 'Manejo geral'}</strong> &nbsp;|&nbsp; 
+                            ⚖️ Peso Médio do Lote: <strong>${pesoMedio > 0 ? pesoMedio.toFixed(1) + ' kg' : '—'}</strong> &nbsp;|&nbsp;
+                            👤 Resp: ${lote.responsavel || 'Equipe de Campo'}
+                          </div>
+                        </div>
+                        <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                          ${
+                            canCreate
+                              ? `
+                            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAlocarLoteEmPasto('${lote.id}')" title="Trocar pasto/piquete deste lote">
+                              🌾 Mudar Pasto
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAdicionarAnimaisAoLote('${lote.nome}')">
+                              ➕ Adicionar Animais
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.desocuparLoteInteiro('${lote.nome}')" title="Deixar todos os animais deste lote sem lote">
+                              🚫 Esvaziar Lote
+                            </button>
+                          `
+                              : ''
+                          }
+                          ${
+                            isAdmin
+                              ? `
+                            <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirLotePasto('${lote.id}')" title="Excluir este lote">
+                              🗑️
+                            </button>
+                          `
+                              : ''
+                          }
+                        </div>
+                      </div>
+
+                      <div class="table-responsive">
+                        <table class="data-table" style="font-size:0.84rem;">
+                          <thead>
+                            <tr>
+                              <th style="width:36px; text-align:center;">
+                                <input type="checkbox" onchange="AmadeusViews.toggleCheckboxLote('${lote.id}', this.checked)" title="Selecionar todos deste lote" />
+                              </th>
+                              <th>Brinco / Identificador</th>
+                              <th>Nome</th>
+                              <th>Espécie / Raça</th>
+                              <th>Peso Atual</th>
+                              <th>GMD Acumulado</th>
+                              <th>Status</th>
+                              ${canCreate ? '<th style="text-align:right;">Ações de Lote</th>' : ''}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${
+                              animaisDoLote.length === 0
+                                ? `<tr><td colspan="8" style="text-align:center; padding:1rem; color:var(--slate-500); font-style:italic;">Nenhum animal alocado neste lote no momento. Clique em "➕ Adicionar Animais" para preencher.</td></tr>`
+                                : animaisDoLote
+                                    .map((a) => {
+                                      const met = core.calcularMetricasAnimal(a);
+                                      return `
+                                      <tr>
+                                        <td style="text-align:center;">
+                                          <input type="checkbox" class="chk-animal-item chk-lote-${lote.id}" value="${a.id}" />
+                                        </td>
+                                        <td><strong>🏷️ ${a.brinco}</strong></td>
+                                        <td><strong>${a.nome}</strong></td>
+                                        <td>${a.especie} (${a.raca})</td>
+                                        <td><strong>${met.pesoAtual.toFixed(1)} kg</strong></td>
+                                        <td><strong style="color:var(--green-700);">+${met.gmdGlobal.toFixed(3)} kg/d</strong></td>
+                                        <td><span class="role-badge role-comum">Ativo</span></td>
+                                        ${
+                                          canCreate
+                                            ? `
+                                          <td style="text-align:right;">
+                                            <div style="display:inline-flex; gap:0.25rem;">
+                                              <button class="btn btn-sm btn-secondary" style="font-size:0.74rem; padding:0.2rem 0.5rem;"
+                                                onclick="AmadeusViews.abrirModalTransferirAnimalIndividual('${a.id}')" title="Transferir para outro lote">
+                                                ➡️ Mudar Lote
+                                              </button>
+                                              <button class="btn btn-sm btn-secondary" style="font-size:0.74rem; padding:0.2rem 0.5rem; color:#b91c1c;"
+                                                onclick="AmadeusViews.removerAnimalDeLoteIndividual('${a.id}')" title="Remover do lote (deixar sem lote)">
+                                                🚫 Tirar
+                                              </button>
+                                            </div>
+                                          </td>
+                                        `
+                                            : ''
+                                        }
+                                      </tr>
+                                    `;
+                                    })
+                                    .join('')
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  `;
+                  })
+                  .join('')
+          }
+
+          <!-- SEÇÃO DE ANIMAIS SEM LOTE ATRIBUÍDO -->
+          ${(() => {
+            const semLote = animais.filter((a) => !a.lote || a.lote.trim() === '' || a.lote.toLowerCase() === 'sem lote');
+            return `
+              <div class="card" style="margin-bottom:0; border-left:6px solid #eab308; background:#fffdf5;">
+                <div class="card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                  <div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <span style="font-size:1.1rem; font-weight:800; color:#854d0e;">⚠️ Animais Sem Lote Atribuído</span>
+                      <span class="role-badge" style="background:#eab308; color:#000; font-weight:800;">${semLote.length} animal(is)</span>
+                    </div>
+                    <div style="font-size:0.78rem; color:var(--slate-600); margin-top:0.2rem;">
+                      Estes animais estão cadastrados no rebanho, mas não fazem parte de nenhum lote de pastejo no momento.
+                    </div>
+                  </div>
+                  ${
+                    semLote.length > 0 && canCreate
+                      ? `
+                    <div style="display:flex; gap:0.35rem; align-items:center;">
+                      <button class="btn btn-sm btn-primary" onclick="AmadeusViews.alocarTodosSemLoteEmLote()">
+                        🏷️ Alocar Todos em um Lote
+                      </button>
+                    </div>
+                  `
+                      : ''
+                  }
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table" style="font-size:0.84rem;">
+                    <thead>
+                      <tr>
+                        <th style="width:36px; text-align:center;">
+                          <input type="checkbox" onchange="AmadeusViews.toggleCheckboxLote('semlote', this.checked)" title="Selecionar todos sem lote" />
+                        </th>
+                        <th>Brinco</th>
+                        <th>Nome</th>
+                        <th>Espécie / Raça</th>
+                        <th>Peso Atual</th>
+                        <th>GMD Global</th>
+                        ${canCreate ? '<th style="text-align:right;">Ação</th>' : ''}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${
+                        semLote.length === 0
+                          ? `<tr><td colspan="7" style="text-align:center; padding:1rem; color:var(--green-800); font-weight:700;">✅ Excelente! Todos os animais do rebanho estão organizados em seus respectivos lotes de pastejo.</td></tr>`
+                          : semLote
+                              .map((a) => {
+                                const met = core.calcularMetricasAnimal(a);
+                                return `
+                                <tr>
+                                  <td style="text-align:center;">
+                                    <input type="checkbox" class="chk-animal-item chk-lote-semlote" value="${a.id}" />
+                                  </td>
+                                  <td><strong>🏷️ ${a.brinco}</strong></td>
+                                  <td><strong>${a.nome}</strong></td>
+                                  <td>${a.especie} (${a.raca})</td>
+                                  <td><strong>${met.pesoAtual.toFixed(1)} kg</strong></td>
+                                  <td><strong style="color:var(--green-700);">+${met.gmdGlobal.toFixed(3)} kg/d</strong></td>
+                                  ${
+                                    canCreate
+                                      ? `
+                                    <td style="text-align:right;">
+                                      <button class="btn btn-sm btn-primary" style="font-size:0.75rem; padding:0.2rem 0.55rem;"
+                                        onclick="AmadeusViews.abrirModalTransferirAnimalIndividual('${a.id}')">
+                                        🏷️ Atribuir a um Lote
+                                      </button>
+                                    </td>
+                                  `
+                                      : ''
+                                  }
+                                </tr>
+                              `;
+                              })
+                              .join('')
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+          })()}
+        </div>
+      </div>
+    `;
+  },
+
+  toggleCheckboxLote(loteId, checked) {
+    const list = document.querySelectorAll(`.chk-lote-${loteId}`);
+    list.forEach((chk) => {
+      chk.checked = checked;
+    });
+  },
+
+  getAnimaisSelecionadosCheckboxes() {
+    const chks = document.querySelectorAll('.chk-animal-item:checked');
+    const ids = [];
+    chks.forEach((c) => ids.push(c.value));
+    return ids;
+  },
+
+  transferirGrupoAnimaisParaLote() {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('transferir animais de lote')) return;
+    const destino = document.getElementById('lote-destino-grupo')?.value;
+    if (!destino) {
+      core.toast('⚠️ Selecione um lote de destino no menu ao lado do botão.', 'aviso');
+      return;
+    }
+
+    const selecionadosIds = this.getAnimaisSelecionadosCheckboxes();
+    if (selecionadosIds.length === 0) {
+      core.toast('⚠️ Marque ao menos um animal nas caixinhas para transferir.', 'aviso');
+      return;
+    }
+
+    let alterados = 0;
+    core.db.animais.forEach((a) => {
+      if (selecionadosIds.includes(a.id)) {
+        a.lote = destino;
+        alterados++;
+      }
+    });
+
+    core.saveDatabase(`Transferiu ${alterados} animal(is) para o ${destino}`);
+    core.toast(`✅ ${alterados} animal(is) transferido(s) com sucesso para o ${destino}!`);
+    this.renderApp();
+  },
+
+  removerGrupoAnimaisDeLote() {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('remover animais de lote')) return;
+    const selecionadosIds = this.getAnimaisSelecionadosCheckboxes();
+    if (selecionadosIds.length === 0) {
+      core.toast('⚠️ Marque ao menos um animal nas caixinhas para remover do lote.', 'aviso');
+      return;
+    }
+
+    if (!confirm(`Deseja retirar ${selecionadosIds.length} animal(is) dos seus lotes atuais e deixá-los sem lote?`)) return;
+
+    let alterados = 0;
+    core.db.animais.forEach((a) => {
+      if (selecionadosIds.includes(a.id)) {
+        a.lote = 'Sem lote';
+        alterados++;
+      }
+    });
+
+    core.saveDatabase(`Removeu ${alterados} animal(is) de lote`);
+    core.toast(`🚫 ${alterados} animal(is) retirado(s) do lote e deixado(s) como 'Sem lote'.`);
+    this.renderApp();
+  },
+
+  desocuparLoteInteiro(loteNome) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('esvaziar lote')) return;
+    if (!confirm(`Deseja retirar todos os animais do lote "${loteNome}"? Eles ficarão como "Sem lote".`)) return;
+
+    let alterados = 0;
+    core.db.animais.forEach((a) => {
+      if ((a.lote || '').trim().toLowerCase() === loteNome.trim().toLowerCase()) {
+        a.lote = 'Sem lote';
+        alterados++;
+      }
+    });
+
+    core.saveDatabase(`Esvaziou lote ${loteNome}`);
+    core.toast(`Lote "${loteNome}" esvaziado (${alterados} animais retirados).`);
+    this.renderApp();
+  },
+
+  abrirModalTransferirAnimalIndividual(animalId) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('transferir animal')) return;
+    const a = core.db.animais.find((x) => x.id === animalId);
+    if (!a) return;
+    const lotes = core.db.lotesPasto || [];
+
+    this.abrirModalGenerico(
+      `➡️ Mudar Lote — ${a.brinco} (${a.nome})`,
+      `
+        <form onsubmit="AmadeusViews.salvarTransferenciaAnimalIndividual(event, '${a.id}')">
+          <div style="background:var(--slate-50); padding:0.85rem; border-radius:8px; border:1px solid var(--slate-200); margin-bottom:1rem; font-size:0.85rem;">
+            <strong>Animal:</strong> ${a.brinco} · ${a.nome} (${a.especie} - ${a.raca})<br/>
+            <strong>Lote Atual:</strong> <span class="role-badge role-comum">${a.lote || 'Sem lote'}</span><br/>
+            <small style="color:var(--slate-500);">Regra: Ao transferir, o animal sairá automaticamente do lote anterior e passará a pertencer exclusivamente ao novo lote.</small>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.25rem;">
+            <label>Selecione o Novo Lote de Destino *</label>
+            <select id="transf-novo-lote" class="form-control" required>
+              <option value="Sem lote">🚫 Deixar Sem Lote (Desvinculado)</option>
+              ${lotes.map((l) => `<option value="${l.nome}" ${a.lote === l.nome ? 'selected' : ''}>🏷️ ${l.nome} (${l.pastoDestino || 'Sem pasto'})</option>`).join('')}
+            </select>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Confirmar Transferência</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarTransferenciaAnimalIndividual(e, animalId) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    const a = core.db.animais.find((x) => x.id === animalId);
+    if (!a) return;
+    const novoLote = document.getElementById('transf-novo-lote').value;
+    a.lote = novoLote;
+
+    core.saveDatabase(`Transferiu animal ${a.brinco} para ${novoLote}`);
+    core.toast(`✅ Animal ${a.brinco} alocado com sucesso no ${novoLote}!`);
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  removerAnimalDeLoteIndividual(animalId) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('remover animal de lote')) return;
+    const a = core.db.animais.find((x) => x.id === animalId);
+    if (!a) return;
+    a.lote = 'Sem lote';
+    core.saveDatabase(`Removeu animal ${a.brinco} de lote`);
+    core.toast(`Animal ${a.brinco} retirado do lote.`);
+    this.renderApp();
+  },
+
+  abrirModalAdicionarAnimaisAoLote(loteNome) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('adicionar animais ao lote')) return;
+    const animais = core.db.animais || [];
+    const outros = animais.filter((a) => (a.lote || '').trim().toLowerCase() !== loteNome.trim().toLowerCase());
+
+    this.abrirModalGenerico(
+      `➕ Adicionar Animais ao ${loteNome}`,
+      `
+        <form onsubmit="AmadeusViews.salvarAdicaoAnimaisAoLote(event, '${loteNome}')">
+          <p style="font-size:0.82rem; color:var(--slate-600); margin-bottom:0.75rem;">
+            Selecione os animais abaixo para transferi-los para o <strong>${loteNome}</strong>. Se algum animal já estiver em outro lote, ele será transferido automaticamente.
+          </p>
+
+          <div style="max-height:280px; overflow-y:auto; border:1px solid var(--slate-200); border-radius:8px; padding:0.5rem; background:#fff; margin-bottom:1rem;">
+            ${
+              outros.length === 0
+                ? `<div style="text-align:center; padding:1rem; color:var(--slate-500);">Todos os animais cadastrados já pertencem a este lote.</div>`
+                : outros
+                    .map(
+                      (a) => `
+                  <label style="display:flex; align-items:center; justify-content:space-between; padding:0.35rem 0.5rem; border-bottom:1px solid var(--slate-100); cursor:pointer;">
+                    <div>
+                      <input type="checkbox" class="chk-adicionar-lote" value="${a.id}" style="margin-right:0.5rem;" />
+                      <strong>${a.brinco}</strong> · ${a.nome} (${a.especie})
+                    </div>
+                    <span class="role-badge role-comum" style="font-size:0.72rem;">${a.lote || 'Sem lote'}</span>
+                  </label>
+                `
+                    )
+                    .join('')
+            }
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" ${outros.length === 0 ? 'disabled' : ''}>💾 Incluir Selecionados no Lote</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarAdicaoAnimaisAoLote(e, loteNome) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    const chks = document.querySelectorAll('.chk-adicionar-lote:checked');
+    const ids = [];
+    chks.forEach((c) => ids.push(c.value));
+
+    if (ids.length === 0) {
+      core.toast('⚠️ Selecione ao menos um animal.', 'aviso');
+      return;
+    }
+
+    let count = 0;
+    core.db.animais.forEach((a) => {
+      if (ids.includes(a.id)) {
+        a.lote = loteNome;
+        count++;
+      }
+    });
+
+    core.saveDatabase(`Adicionou ${count} animais ao ${loteNome}`);
+    core.toast(`✅ ${count} animal(is) alocado(s) no ${loteNome}!`);
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  alocarTodosSemLoteEmLote() {
+    const core = window.AmadeusCore;
+    const lotes = core.db.lotesPasto || [];
+    if (lotes.length === 0) {
+      core.toast('⚠️ Crie primeiro um lote de pasto.', 'aviso');
+      return;
+    }
+
+    const destino = prompt(`Digite o nome exato do lote para onde deseja mover todos os animais sem lote:\n\nLotes disponíveis: ${lotes.map((l) => l.nome).join(', ')}`, lotes[0].nome);
+    if (!destino) return;
+
+    let count = 0;
+    core.db.animais.forEach((a) => {
+      if (!a.lote || a.lote.trim() === '' || a.lote.toLowerCase() === 'sem lote') {
+        a.lote = destino;
+        count++;
+      }
+    });
+
+    core.saveDatabase(`Moveu ${count} animais sem lote para ${destino}`);
+    core.toast(`✅ ${count} animal(is) alocado(s) no lote ${destino}!`);
+    this.renderApp();
+  },
+
+  abrirModalCriarLotePasto(id = null) {
+    const core = window.AmadeusCore;
+    if (id && !core.requireAdmin('editar lote de pasto')) return;
+    if (!id && !core.requireCreate('criar lote de pasto')) return;
+    const lista = core.db.lotesPasto || [];
+    const pastagens = core.db.pastagens || [];
+    const ex = id ? lista.find((x) => x.id === id) : null;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const respPadrao = core.currentUser?.nome || 'Guilherme Dias Pereira';
+
+    const item = ex || {
+      nome: 'Lote 0' + (lista.length + 1),
+      finalidade: 'Recria e Terminação em Consórcio',
+      pastoDestino: pastagens[0]?.piqueteNome || 'Piquete 01',
+      dataFormacao: hoje,
+      responsavel: respPadrao,
+      observacoes: ''
+    };
+
+    this.abrirModalGenerico(
+      ex ? '✏️ Editar Lote de Pasto' : '🏷️ Criar Novo Lote de Pasto',
+      `
+        <form onsubmit="AmadeusViews.salvarLotePasto(event, '${id || ''}')">
+          <div class="form-grid">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Nome / Identificação do Lote *</label>
+              <input type="text" id="lote-nome" class="form-control" value="${item.nome}" placeholder="Ex: Lote 03 - Garrotes Nelore" required />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Finalidade Zootécnica do Lote</label>
+              <input type="text" id="lote-finalidade" class="form-control" value="${item.finalidade}" placeholder="Ex: Pastejo rotacionado, avaliação de GMD, terminação..." />
+            </div>
+            <div class="form-group">
+              <label>Piquete / Pasto de Destino *</label>
+              <select id="lote-pasto" class="form-control" required>
+                ${pastagens.map((p) => `<option value="${p.piqueteNome}" ${item.pastoDestino === p.piqueteNome ? 'selected' : ''}>🌾 ${p.piqueteNome} (${p.tipoPastagem})</option>`).join('')}
+                <option value="Outro Piquete" ${!pastagens.some((p) => p.piqueteNome === item.pastoDestino) ? 'selected' : ''}>Outro Piquete / Confinamento</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Data de Formação *</label>
+              <input type="date" id="lote-data" class="form-control" value="${item.dataFormacao}" required />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Responsável pelo Lote *</label>
+              <input type="text" id="lote-resp" class="form-control" value="${item.responsavel}" required />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Observações Adicionais</label>
+            <textarea id="lote-obs" class="form-control" rows="2" placeholder="Critérios de seleção do lote, metas de ganho de peso...">${item.observacoes || ''}</textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Lote</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarLotePasto(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    if (!Array.isArray(core.db.lotesPasto)) core.db.lotesPasto = [];
+
+    const nome = document.getElementById('lote-nome').value.trim();
+
+    if (idExistente) {
+      const idx = core.db.lotesPasto.findIndex((x) => x.id === idExistente);
+      if (idx !== -1) {
+        const antigoNome = core.db.lotesPasto[idx].nome;
+        core.db.lotesPasto[idx] = {
+          id: idExistente,
+          nome,
+          finalidade: document.getElementById('lote-finalidade').value.trim(),
+          pastoDestino: document.getElementById('lote-pasto').value,
+          dataFormacao: document.getElementById('lote-data').value,
+          responsavel: document.getElementById('lote-resp').value.trim(),
+          observacoes: document.getElementById('lote-obs').value.trim()
+        };
+
+        // Se renomeou o lote, atualiza os animais correspondentes
+        if (antigoNome !== nome) {
+          core.db.animais.forEach((a) => {
+            if (a.lote === antigoNome) a.lote = nome;
+          });
+        }
+      }
+    } else {
+      core.db.lotesPasto.push({
+        id: 'lote-' + Date.now(),
+        nome,
+        finalidade: document.getElementById('lote-finalidade').value.trim(),
+        pastoDestino: document.getElementById('lote-pasto').value,
+        dataFormacao: document.getElementById('lote-data').value,
+        responsavel: document.getElementById('lote-resp').value.trim(),
+        observacoes: document.getElementById('lote-obs').value.trim()
+      });
+    }
+
+    core.saveDatabase(`Salvou lote de pasto: ${nome}`);
+    core.toast('🏷️ Lote de pasto salvo com sucesso!');
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  abrirModalAlocarLoteEmPasto(loteId) {
+    const core = window.AmadeusCore;
+    const l = core.db.lotesPasto.find((x) => x.id === loteId);
+    if (!l) return;
+    const pastagens = core.db.pastagens || [];
+
+    this.abrirModalGenerico(
+      `🌾 Trocar Pasto de Destino — ${l.nome}`,
+      `
+        <form onsubmit="AmadeusViews.salvarTrocaPastoLote(event, '${loteId}')">
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Selecione o Novo Piquete / Pastagem *</label>
+            <select id="troca-pasto-sel" class="form-control" required>
+              ${pastagens.map((p) => `<option value="${p.piqueteNome}" ${l.pastoDestino === p.piqueteNome ? 'selected' : ''}>🌾 ${p.piqueteNome} (Forrageira: ${p.tipoPastagem} | Altura: ${p.alturaMediaCm} cm)</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Mudar Pasto do Lote</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarTrocaPastoLote(e, loteId) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    const l = core.db.lotesPasto.find((x) => x.id === loteId);
+    if (!l) return;
+    l.pastoDestino = document.getElementById('troca-pasto-sel').value;
+    core.saveDatabase(`Moveu lote ${l.nome} para ${l.pastoDestino}`);
+    core.toast(`Lote ${l.nome} alocado no ${l.pastoDestino}!`);
+    this.fecharModal();
+    this.renderApp();
+  },
+
+  excluirLotePasto(loteId) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir lote de pasto')) return;
+    const l = core.db.lotesPasto.find((x) => x.id === loteId);
+    if (!l) return;
+    if (!confirm(`Deseja excluir o lote "${l.nome}"? Os animais pertencentes a ele ficarão como "Sem lote".`)) return;
+
+    core.db.animais.forEach((a) => {
+      if ((a.lote || '').trim().toLowerCase() === l.nome.trim().toLowerCase()) {
+        a.lote = 'Sem lote';
+      }
+    });
+
+    core.db.lotesPasto = core.db.lotesPasto.filter((x) => x.id !== loteId);
+    core.saveDatabase(`Excluiu lote ${l.nome}`);
+    core.toast(`Lote "${l.nome}" excluído.`);
+    this.renderApp();
   },
 
   renderSubTabChecklistSanidade(checkSanidade, canCreate, isAdmin) {
