@@ -6133,7 +6133,10 @@ const AmadeusViews = {
   // ==========================================================================
   // MÓDULO SIPA — Sistema de Plantio Direto (SPD) & Integração no Campus
   // ==========================================================================
-  sipaSubTab: 'mapa', // 'mapa' | 'plantios' | 'avaliacoes' | 'ferramentas'
+  sipaSubTab: 'mapa', // 'mapa' | 'plantios' | 'avaliacoes' | 'lavoura' | 'ferramentas'
+  sipaLavouraAutenticado: false,
+  sipaLavouraSection: 'atributos', // 'atributos' | 'planilha'
+  sipaLavouraFiltroGrafico: 'todos', // 'todos' | 'produtividade' | 'bromatologia' | 'biometria' | 'espiga'
 
   setSipaSubTab(aba) {
     this.sipaSubTab = aba;
@@ -6233,6 +6236,11 @@ const AmadeusViews = {
         <button class="btn btn-sm ${sub === 'avaliacoes' ? 'btn-primary' : 'btn-secondary'}"
           onclick="AmadeusViews.setSipaSubTab('avaliacoes')">
           🍂 Avaliações de Palhada, Solo &amp; Dados (${avaliacoes.length})
+        </button>
+        <button class="btn btn-sm ${sub === 'lavoura' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setSipaSubTab('lavoura')"
+          style="${sub === 'lavoura' ? '' : 'border-color:#f59e0b; color:#b45309; background:#fffbeb;'}">
+          🌽 Lavoura ${this.isSipaLavouraAutenticado() ? '🔓' : '🔒'}
         </button>
         <button class="btn btn-sm ${sub === 'ferramentas' ? 'btn-primary' : 'btn-secondary'}"
           onclick="AmadeusViews.setSipaSubTab('ferramentas')">
@@ -6383,6 +6391,8 @@ const AmadeusViews = {
           </div>
         </div>
       `
+          : sub === 'lavoura'
+          ? this.renderSubTabLavouraMilho()
           : `
         <div class="responsive-grid-2">
           <!-- Calculadora 1: Regulagem de Semeadora e População de Plantas no SPD -->
@@ -7675,6 +7685,1060 @@ const AmadeusViews = {
     core.saveDatabase('Excluiu avaliação SIPA');
     core.toast('Avaliação SIPA removida.');
     this.renderApp();
+  },
+
+  // ==========================================================================
+  // SUB-ABA: LAVOURA DO MILHO (SIPA) — ACESSO RESTRITO POR SENHA
+  // ==========================================================================
+  isSipaLavouraAutenticado() {
+    return Boolean(
+      this.sipaLavouraAutenticado ||
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('amadeus_sipa_lavoura_auth') === '1')
+    );
+  },
+
+  validarAcessoLavouraSipa(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const core = window.AmadeusCore;
+    const inp = document.getElementById('sipa-senha-input');
+    const senha = inp ? inp.value.trim() : '';
+    if (senha === 'sipaamadeus0908') {
+      this.sipaLavouraAutenticado = true;
+      try {
+        sessionStorage.setItem('amadeus_sipa_lavoura_auth', '1');
+      } catch (err) {}
+      core.toast('🔓 Acesso liberado à Lavoura do Milho!', 'sucesso');
+      this.renderMainContent();
+    } else {
+      const errEl = document.getElementById('sipa-senha-erro');
+      if (errEl) errEl.style.display = 'block';
+      if (inp) {
+        inp.style.borderColor = '#dc2626';
+        inp.style.background = '#fef2f2';
+        inp.focus();
+        inp.select();
+      }
+      core.toast('❌ Senha incorreta! Digite a senha definida para a lavoura.', 'aviso');
+    }
+  },
+
+  bloquearLavouraSipa() {
+    this.sipaLavouraAutenticado = false;
+    try {
+      sessionStorage.removeItem('amadeus_sipa_lavoura_auth');
+    } catch (err) {}
+    window.AmadeusCore.toast('🔒 Pasta da Lavoura bloqueada com sucesso.');
+    this.renderMainContent();
+  },
+
+  toggleMostrarSenhaLavoura() {
+    const inp = document.getElementById('sipa-senha-input');
+    const btn = document.getElementById('btn-toggle-senha-lavoura');
+    if (!inp) return;
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      if (btn) btn.textContent = '🙈 Ocultar';
+    } else {
+      inp.type = 'password';
+      if (btn) btn.textContent = '👁️ Mostrar';
+    }
+  },
+
+  setSipaLavouraSection(sec) {
+    this.sipaLavouraSection = sec;
+    this.renderMainContent();
+  },
+
+  setSipaLavouraFiltroGrafico(filtro) {
+    this.sipaLavouraFiltroGrafico = filtro;
+    this.renderMainContent();
+  },
+
+  renderSubTabLavouraMilho() {
+    if (!this.isSipaLavouraAutenticado()) {
+      return this.renderSubTabLavouraMilhoBloqueado();
+    }
+    return this.renderSubTabLavouraMilhoConteudo();
+  },
+
+  renderSubTabLavouraMilhoBloqueado() {
+    return `
+      <div class="card" style="max-width:540px; margin:2rem auto; text-align:center; padding:2rem 1.5rem; border:2px dashed #f59e0b; border-radius:18px; background:linear-gradient(180deg, #fffbeb 0%, #ffffff 100%); box-shadow:0 10px 25px -5px rgba(245, 158, 11, 0.1);">
+        <div style="width:72px; height:72px; border-radius:50%; background:#fef3c7; border:3px solid #fde68a; display:inline-flex; align-items:center; justify-content:center; font-size:2.2rem; margin-bottom:1rem;">
+          🔒
+        </div>
+        <div style="display:inline-block; background:#fde68a; color:#92400e; font-size:0.74rem; font-weight:800; padding:0.25rem 0.8rem; border-radius:999px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.75rem;">
+          ÁREA RESTRITA · PROTEÇÃO POR SENHA
+        </div>
+        <h3 style="font-size:1.35rem; font-weight:800; color:#78350f; margin-bottom:0.4rem;">
+          Pasta Lavoura: Qualidade do Milho &amp; Planilha
+        </h3>
+        <p style="font-size:0.85rem; color:#92400e; margin-bottom:1.5rem; line-height:1.45;">
+          Esta pasta contém dados científicos comparativos de <strong>Plantio Direto (SPD) vs. Convencional (SPC)</strong> e a <strong>Planilha de Acompanhamento do Milho</strong> solicitada pelo professor. Insira a senha de acesso para desbloquear:
+        </p>
+
+        <form onsubmit="AmadeusViews.validarAcessoLavouraSipa(event)" style="max-width:380px; margin:0 auto; text-align:left;">
+          <div class="form-group" style="margin-bottom:0.85rem;">
+            <label style="font-size:0.82rem; font-weight:700; color:#78350f;">Senha de Acesso da Pasta *</label>
+            <div style="display:flex; gap:0.4rem;">
+              <input type="password" id="sipa-senha-input" class="form-control" placeholder="Digite a senha..." required autofocus
+                style="border-color:#f59e0b; font-size:0.95rem; font-weight:600; letter-spacing:0.05em;" />
+              <button type="button" id="btn-toggle-senha-lavoura" class="btn btn-secondary" onclick="AmadeusViews.toggleMostrarSenhaLavoura()" style="font-size:0.78rem; padding:0.3rem 0.6rem; white-space:nowrap;">
+                👁️ Mostrar
+              </button>
+            </div>
+            <div id="sipa-senha-erro" style="display:none; color:#dc2626; font-size:0.8rem; margin-top:0.4rem; font-weight:700;">
+              ❌ Senha incorreta! Digite a senha definida para a lavoura.
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; justify-content:center; margin-top:1.25rem;">
+            <button type="submit" class="btn btn-primary" style="background:#d97706; border-color:#b45309; padding:0.6rem 1.4rem; font-weight:700;">
+              🔓 Desbloquear Pasta
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.setSipaSubTab('mapa')">
+              Voltar ao Mapa
+            </button>
+          </div>
+        </form>
+
+        <div style="margin-top:1.5rem; font-size:0.74rem; color:#b45309; border-top:1px solid #fed7aa; padding-top:0.8rem;">
+          💡 <em>O acesso permanecerá liberado durante a sua navegação na sessão atual até você fechar ou clicar em "Bloquear Pasta".</em>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSubTabLavouraMilhoConteudo() {
+    const core = window.AmadeusCore;
+    const canCreate = core.canCreate();
+    const isAdmin = core.isAdmin();
+    const lavoura = core.db.sipa?.lavouraMilho || {};
+    const atributos = lavoura.atributosQualidade || [];
+    const planilha = lavoura.planilhaCrescimento || { colunas: [], linhas: [] };
+    const sec = this.sipaLavouraSection || 'atributos';
+
+    // Destaques de ganho no SPD
+    const prodAttr = atributos.find((a) => a.id === 'atr-1') || { spd: 138.5, spc: 112.0 };
+    const pbAttr = atributos.find((a) => a.id === 'atr-3') || { spd: 9.4, spc: 8.1 };
+    const ndtAttr = atributos.find((a) => a.id === 'atr-4') || { spd: 71.8, spc: 65.4 };
+    const raizAttr = atributos.find((a) => a.id === 'atr-13') || { spd: 68, spc: 40 };
+
+    const diffProdPct = (((prodAttr.spd - prodAttr.spc) / prodAttr.spc) * 100).toFixed(1);
+    const diffPbPct = (((pbAttr.spd - pbAttr.spc) / pbAttr.spc) * 100).toFixed(1);
+    const diffNdtPct = (((ndtAttr.spd - ndtAttr.spc) / ndtAttr.spc) * 100).toFixed(1);
+    const diffRaizPct = (((raizAttr.spd - raizAttr.spc) / raizAttr.spc) * 100).toFixed(0);
+
+    return `
+      <!-- Cabeçalho Especial da Lavoura Desbloqueada -->
+      <div class="card" style="background:linear-gradient(135deg, #14532d 0%, #15803d 45%, #b45309 100%); color:#ffffff; border:none; margin-bottom:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.18); padding:0.22rem 0.75rem; border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.45rem;">
+              🌽 LAVOURA EXPERIMENTAL DO MILHO · ÁREA RESERVADA (SIPA)
+            </div>
+            <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:0.25rem;">
+              Qualidade do Milho (Plantio Direto × Convencional) &amp; Planilha Biométrica
+            </h2>
+            <p style="font-size:0.84rem; color:#fef3c7; max-width:820px;">
+              Ensaio comparativo de atributos produtivos, bromatológicos e agronômicos entre <strong>Plantio Direto (SPD)</strong> e <strong>Plantio Convencional (SPC)</strong>, integrado à planilha dinâmica de crescimento vegetal configurada para as avaliações do professor.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.bloquearLavouraSipa()" style="background:rgba(255,255,255,0.22); color:#ffffff; border:1px solid rgba(255,255,255,0.4);" title="Bloquear pasta com senha novamente">
+              🔒 Bloquear Pasta
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navegação Interna da Lavoura -->
+      <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:1.15rem; background:#ffffff; padding:0.5rem; border-radius:12px; border:1px solid var(--slate-200);">
+        <button class="btn btn-sm ${sec === 'atributos' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setSipaLavouraSection('atributos')">
+          📊 Atributos de Qualidade &amp; Gráficos (SPD × Convencional)
+        </button>
+        <button class="btn btn-sm ${sec === 'planilha' ? 'btn-primary' : 'btn-secondary'}"
+          onclick="AmadeusViews.setSipaLavouraSection('planilha')">
+          📋 Planilha de Registro de Crescimento do Milho (${planilha.linhas?.length || 0})
+        </button>
+      </div>
+
+      ${
+        sec === 'atributos'
+          ? `
+        <!-- KPI Cards de Ganho no Plantio Direto -->
+        <div class="kpi-grid">
+          <div class="kpi-card" style="border-top:4px solid #16a34a;">
+            <div class="kpi-label">Produtividade Estimada (SPD)</div>
+            <div class="kpi-value" style="color:#16a34a;">${prodAttr.spd} sc/ha</div>
+            <div class="kpi-sub">Convencional: <strong>${prodAttr.spc} sc/ha</strong> <span class="role-badge role-comum" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:800;">+${diffProdPct}% no SPD</span></div>
+          </div>
+          <div class="kpi-card blue" style="border-top:4px solid #0284c7;">
+            <div class="kpi-label">Proteína Bruta (PB) Grão / Silagem</div>
+            <div class="kpi-value" style="color:#0284c7;">${pbAttr.spd}%</div>
+            <div class="kpi-sub">Convencional: <strong>${pbAttr.spc}%</strong> <span class="role-badge role-comum" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:800;">+${diffPbPct}% no SPD</span></div>
+          </div>
+          <div class="kpi-card amber" style="border-top:4px solid #d97706;">
+            <div class="kpi-label">NDT (Nutrientes Digestíveis Totais)</div>
+            <div class="kpi-value" style="color:#d97706;">${ndtAttr.spd}%</div>
+            <div class="kpi-sub">Convencional: <strong>${ndtAttr.spc}%</strong> <span class="role-badge role-comum" style="background:#fef3c7; color:#92400e; font-size:0.7rem; font-weight:800;">+${diffNdtPct}% no SPD</span></div>
+          </div>
+          <div class="kpi-card" style="border-top:4px solid #7c3aed;">
+            <div class="kpi-label">Profundidade Radicular Efetiva</div>
+            <div class="kpi-value" style="color:#7c3aed;">${raizAttr.spd} cm</div>
+            <div class="kpi-sub">Convencional: <strong>${raizAttr.spc} cm</strong> <span class="role-badge role-comum" style="background:#ede9fe; color:#6d28d9; font-size:0.7rem; font-weight:800;">+${diffRaizPct}% no perfil</span></div>
+          </div>
+        </div>
+
+        <!-- Gráfico Comparativo Interativo (SPD vs Convencional) -->
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap; gap:0.6rem;">
+            <div>
+              <div class="card-title">📈 Gráficos Comparativos: Plantio Direto (SPD) vs. Plantio Convencional (SPC)</div>
+              <div style="font-size:0.8rem; color:var(--slate-500);">
+                Comparação visual direta entre os dois sistemas de cultivo na área do campus
+              </div>
+            </div>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+              <span style="font-size:0.78rem; font-weight:700; color:var(--slate-600);">Filtrar Atributos:</span>
+              <button class="btn btn-sm ${this.sipaLavouraFiltroGrafico === 'todos' || !this.sipaLavouraFiltroGrafico ? 'btn-primary' : 'btn-secondary'}"
+                onclick="AmadeusViews.setSipaLavouraFiltroGrafico('todos')">Todos</button>
+              <button class="btn btn-sm ${this.sipaLavouraFiltroGrafico === 'produtividade' ? 'btn-primary' : 'btn-secondary'}"
+                onclick="AmadeusViews.setSipaLavouraFiltroGrafico('produtividade')">Produtividade</button>
+              <button class="btn btn-sm ${this.sipaLavouraFiltroGrafico === 'bromatologia' ? 'btn-primary' : 'btn-secondary'}"
+                onclick="AmadeusViews.setSipaLavouraFiltroGrafico('bromatologia')">Bromatologia</button>
+              <button class="btn btn-sm ${this.sipaLavouraFiltroGrafico === 'biometria' ? 'btn-primary' : 'btn-secondary'}"
+                onclick="AmadeusViews.setSipaLavouraFiltroGrafico('biometria')">Biometria &amp; Raiz</button>
+            </div>
+          </div>
+
+          <!-- Componente Gráfico SVG -->
+          ${this.renderGraficoComparativoQualidadeMilho(atributos)}
+        </div>
+
+        <!-- Tabela Completa de Atributos de Qualidade -->
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap; gap:0.6rem;">
+            <div>
+              <div class="card-title">🔬 Tabela Técnica de Atributos e Parâmetros Avaliados</div>
+              <div style="font-size:0.8rem; color:var(--slate-500);">
+                Registro quantitativo completo com descrição agronômica e variação percentual
+              </div>
+            </div>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+              ${
+                canCreate
+                  ? `
+                <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAtributoQualidade()">
+                  ➕ Adicionar Novo Atributo
+                </button>
+              `
+                  : ''
+              }
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" style="font-size:0.84rem;">
+              <thead>
+                <tr>
+                  <th>Parâmetro / Atributo</th>
+                  <th>Categoria</th>
+                  <th>🟢 Plantio Direto (SPD)</th>
+                  <th>⚪ Convencional (SPC)</th>
+                  <th>Diferença / Variação</th>
+                  <th>Análise Técnica / Agronômica</th>
+                  ${canCreate ? '<th style="text-align:right;">Ações</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  atributos.length === 0
+                    ? `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--slate-500);">Nenhum atributo cadastrado.</td></tr>`
+                    : atributos
+                        .map((a) => {
+                          const diffAbs = (a.spd - a.spc).toFixed(1);
+                          let diffPct = (((a.spd - a.spc) / a.spc) * 100).toFixed(1);
+                          const isVantagem = a.menorMelhor ? a.spd < a.spc : a.spd > a.spc;
+                          return `
+                          <tr>
+                            <td>
+                              <strong>${a.nome}</strong><br/>
+                              <span style="font-size:0.74rem; color:var(--slate-500);">Unidade: ${a.unidade}</span>
+                            </td>
+                            <td><span class="role-badge role-comum" style="font-size:0.72rem; text-transform:capitalize;">${a.categoria}</span></td>
+                            <td><strong style="color:#15803d; font-size:0.95rem;">${a.spd} ${a.unidade}</strong></td>
+                            <td><strong style="color:#b45309; font-size:0.95rem;">${a.spc} ${a.unidade}</strong></td>
+                            <td>
+                              <span class="role-badge" style="background:${isVantagem ? '#dcfce7' : '#fee2e2'}; color:${isVantagem ? '#15803d' : '#b91c1c'}; font-weight:800;">
+                                ${Number(diffPct) > 0 ? '+' : ''}${diffPct}% (${Number(diffAbs) > 0 ? '+' : ''}${diffAbs} ${a.unidade})
+                              </span>
+                            </td>
+                            <td style="font-size:0.78rem; color:var(--slate-600); max-width:320px;">
+                              ${a.descricao || '—'}
+                            </td>
+                            ${
+                              canCreate
+                                ? `
+                              <td style="text-align:right;">
+                                <div style="display:inline-flex; gap:0.25rem;">
+                                  <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAtributoQualidade('${a.id}')" title="Editar atributo">✏️</button>
+                                  ${
+                                    isAdmin
+                                      ? `<button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirAtributoQualidade('${a.id}')" title="Excluir atributo">🗑️</button>`
+                                      : ''
+                                  }
+                                </div>
+                              </td>
+                            `
+                                : ''
+                            }
+                          </tr>
+                        `;
+                        })
+                        .join('')
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+          : `
+        <!-- SEÇÃO: PLANILHA DE CRESCIMENTO DO MILHO (CUSTOMIZÁVEL PELO PROFESSOR) -->
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap; gap:0.6rem;">
+            <div>
+              <div class="card-title">📋 ${planilha.titulo || 'Registro de Crescimento e Biometria do Milho'}</div>
+              <div style="font-size:0.8rem; color:var(--slate-500);">
+                Planilha dinâmica customizada para o professor: <strong>edite os nomes das colunas superiores</strong>, adicione novos parâmetros e insira as avaliações de campo.
+              </div>
+            </div>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+              ${
+                canCreate
+                  ? `
+                <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalLinhaCrescimento()">
+                  ➕ Nova Linha de Medição
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalGerenciarColunasPlanilha()" title="Renomear ou adicionar colunas superiores">
+                  📐 Gerenciar / Editar Colunas
+                </button>
+              `
+                  : ''
+              }
+              <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.exportarPlanilhaCrescimentoCsv()" title="Exportar planilha para Microsoft Excel / CSV">
+                📥 Baixar Excel (CSV)
+              </button>
+              ${
+                isAdmin
+                  ? `
+                <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.restaurarPadraoPlanilhaCrescimento()" title="Restaurar dados padrão do experimento" style="color:var(--slate-500);">
+                  🔄 Restaurar Padrão
+                </button>
+              `
+                  : ''
+              }
+            </div>
+          </div>
+
+          <!-- Gráfico Visual de Curva de Crescimento (DAE vs Altura) -->
+          ${this.renderGraficoCurvaCrescimentoMilho(planilha)}
+
+          <!-- Tabela Dinâmica Customizada -->
+          <div class="table-responsive" style="margin-top:1.25rem;">
+            <table class="data-table" style="font-size:0.83rem;">
+              <thead>
+                <tr>
+                  <th style="width:40px; text-align:center;">#</th>
+                  ${(planilha.colunas || [])
+                    .map(
+                      (col) => `
+                    <th>
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:0.3rem;">
+                        <span>${col.label}</span>
+                        <span style="font-size:0.68rem; opacity:0.6; font-weight:normal;">[${col.tipo || 'texto'}]</span>
+                      </div>
+                    </th>
+                  `
+                    )
+                    .join('')}
+                  ${canCreate ? '<th style="text-align:right; width:90px;">Ações</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  (planilha.linhas || []).length === 0
+                    ? `<tr><td colspan="${(planilha.colunas || []).length + 2}" style="text-align:center; padding:1.5rem; color:var(--slate-500);">Nenhum registro inserido na planilha ainda. Clique em "➕ Nova Linha de Medição" para começar.</td></tr>`
+                    : (planilha.linhas || [])
+                        .map((linha, idx) => {
+                          const isSPD = (linha.sistema || '').toLowerCase().includes('direto') || (linha.sistema || '').toLowerCase().includes('spd');
+                          return `
+                          <tr style="${isSPD ? 'background:rgba(22, 101, 52, 0.02);' : ''}">
+                            <td style="text-align:center; font-weight:700; color:var(--slate-400); font-size:0.75rem;">${idx + 1}</td>
+                            ${(planilha.colunas || [])
+                              .map((col) => {
+                                const val = linha[col.id] !== undefined && linha[col.id] !== null ? linha[col.id] : '—';
+                                if (col.id === 'sistema') {
+                                  return `<td><span class="role-badge" style="background:${isSPD ? '#dcfce7' : '#fef3c7'}; color:${isSPD ? '#15803d' : '#92400e'}; font-weight:700;">${val}</span></td>`;
+                                }
+                                if (col.id === 'altura') {
+                                  return `<td><strong>${val} cm</strong></td>`;
+                                }
+                                if (col.id === 'dae') {
+                                  return `<td><strong style="color:var(--slate-700);">${val} d</strong></td>`;
+                                }
+                                return `<td>${val}</td>`;
+                              })
+                              .join('')}
+                            ${
+                              canCreate
+                                ? `
+                              <td style="text-align:right;">
+                                <div style="display:inline-flex; gap:0.25rem;">
+                                  <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalLinhaCrescimento('${linha.id}')" title="Editar linha">✏️</button>
+                                  <button class="btn btn-sm btn-danger" onclick="AmadeusViews.excluirLinhaCrescimento('${linha.id}')" title="Excluir linha">🗑️</button>
+                                </div>
+                              </td>
+                            `
+                                : ''
+                            }
+                          </tr>
+                        `;
+                        })
+                        .join('')
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+      }
+    `;
+  },
+
+  // ==========================================================================
+  // GRÁFICO COMPARATIVO SVG — ATRIBUTOS DE QUALIDADE DO MILHO
+  // ==========================================================================
+  renderGraficoComparativoQualidadeMilho(atributos) {
+    const filtro = this.sipaLavouraFiltroGrafico || 'todos';
+    let filtrados = atributos;
+    if (filtro === 'produtividade') {
+      filtrados = atributos.filter((a) => a.categoria === 'produtividade' || a.categoria === 'espiga');
+    } else if (filtro === 'bromatologia') {
+      filtrados = atributos.filter((a) => a.categoria === 'bromatologia');
+    } else if (filtro === 'biometria') {
+      filtrados = atributos.filter((a) => a.categoria === 'biometria' || a.categoria === 'solo_raiz');
+    }
+
+    if (filtrados.length === 0) {
+      return `<div style="text-align:center; padding:2rem; color:var(--slate-500);">Nenhum atributo corresponde ao filtro selecionado.</div>`;
+    }
+
+    return `
+      <div style="background:#f8fafc; border:1px solid var(--slate-200); border-radius:12px; padding:1.25rem; margin-top:0.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; margin-bottom:1rem;">
+          <div style="font-size:0.85rem; font-weight:800; color:var(--slate-800);">
+            📊 Barras Comparativas Lado a Lado:
+          </div>
+          <div style="display:flex; gap:1rem; align-items:center; font-size:0.78rem;">
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;">
+              <span style="width:14px; height:14px; border-radius:3px; background:#16a34a; display:inline-block;"></span>
+              <strong>Plantio Direto (SPD)</strong>
+            </span>
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;">
+              <span style="width:14px; height:14px; border-radius:3px; background:#d97706; display:inline-block;"></span>
+              <strong>Convencional (SPC)</strong>
+            </span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:1.1rem;">
+          ${filtrados
+            .map((attr) => {
+              const maxVal = Math.max(attr.spd, attr.spc) * 1.15 || 1;
+              const pctSpd = Math.min(100, Math.max(8, (attr.spd / maxVal) * 100));
+              const pctSpc = Math.min(100, Math.max(8, (attr.spc / maxVal) * 100));
+              const diffPct = (((attr.spd - attr.spc) / attr.spc) * 100).toFixed(1);
+              const isVantagem = attr.menorMelhor ? attr.spd < attr.spc : attr.spd > attr.spc;
+
+              return `
+              <div style="background:#ffffff; border:1px solid var(--slate-200); border-radius:8px; padding:0.75rem 1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.45rem;">
+                  <strong style="font-size:0.86rem; color:var(--slate-800);">${attr.nome} (${attr.unidade})</strong>
+                  <span class="role-badge" style="background:${isVantagem ? '#dcfce7' : '#fee2e2'}; color:${isVantagem ? '#15803d' : '#b91c1c'}; font-size:0.74rem; font-weight:800;">
+                    ${Number(diffPct) > 0 ? '+' : ''}${diffPct}% no SPD
+                  </span>
+                </div>
+
+                <!-- Barra Plantio Direto -->
+                <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.35rem;">
+                  <span style="width:45px; font-size:0.72rem; font-weight:800; color:#16a34a; text-align:right;">SPD</span>
+                  <div style="flex:1; background:#e2e8f0; height:18px; border-radius:6px; overflow:hidden; position:relative;">
+                    <div style="width:${pctSpd}%; background:linear-gradient(90deg, #15803d, #22c55e); height:100%; border-radius:6px; display:flex; align-items:center; justify-content:flex-end; padding-right:6px; color:#ffffff; font-size:0.7rem; font-weight:800;">
+                      ${attr.spd} ${attr.unidade}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Barra Plantio Convencional -->
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                  <span style="width:45px; font-size:0.72rem; font-weight:800; color:#d97706; text-align:right;">SPC</span>
+                  <div style="flex:1; background:#e2e8f0; height:18px; border-radius:6px; overflow:hidden; position:relative;">
+                    <div style="width:${pctSpc}%; background:linear-gradient(90deg, #b45309, #f59e0b); height:100%; border-radius:6px; display:flex; align-items:center; justify-content:flex-end; padding-right:6px; color:#ffffff; font-size:0.7rem; font-weight:800;">
+                      ${attr.spc} ${attr.unidade}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+            })
+            .join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  // ==========================================================================
+  // GRÁFICO VISUAL DE CURVA DE CRESCIMENTO DO MILHO (DAE vs ALTURA cm)
+  // ==========================================================================
+  renderGraficoCurvaCrescimentoMilho(planilha) {
+    const linhas = (planilha.linhas || []).filter((l) => Number(l.dae) >= 0 && Number(l.altura) > 0);
+    if (linhas.length < 2) {
+      return '';
+    }
+
+    // Separa dados SPD e SPC
+    const ptsSPD = linhas
+      .filter((l) => (l.sistema || '').toLowerCase().includes('direto') || (l.sistema || '').toLowerCase().includes('spd'))
+      .sort((a, b) => Number(a.dae) - Number(b.dae));
+    const ptsSPC = linhas
+      .filter((l) => !(l.sistema || '').toLowerCase().includes('direto') && !(l.sistema || '').toLowerCase().includes('spd'))
+      .sort((a, b) => Number(a.dae) - Number(b.dae));
+
+    const W = 800;
+    const H = 260;
+    const padL = 60;
+    const padR = 40;
+    const padT = 30;
+    const padB = 40;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    const maxDAE = Math.max(80, ...linhas.map((l) => Number(l.dae) || 0));
+    const maxAlt = Math.max(260, ...linhas.map((l) => Number(l.altura) || 0));
+
+    const toX = (dae) => padL + (Number(dae) / maxDAE) * plotW;
+    const toY = (alt) => padT + plotH - (Number(alt) / maxAlt) * plotH;
+
+    // Constrói caminhos SVG
+    const buildPath = (pts) => {
+      if (pts.length === 0) return '';
+      return pts.reduce((acc, p, idx) => {
+        const x = toX(p.dae);
+        const y = toY(p.altura);
+        return idx === 0 ? `M ${x.toFixed(1)},${y.toFixed(1)}` : `${acc} L ${x.toFixed(1)},${y.toFixed(1)}`;
+      }, '');
+    };
+
+    const pathSPD = buildPath(ptsSPD);
+    const pathSPC = buildPath(ptsSPC);
+
+    // Linhas de grade horizontal
+    const gridY = [50, 100, 150, 200, 250];
+
+    return `
+      <div style="background:#ffffff; border:1px solid var(--slate-200); border-radius:12px; padding:1rem; margin-top:0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem;">
+          <strong style="font-size:0.86rem; color:var(--slate-800);">
+            📈 Curva de Crescimento Vegetativo (DAE vs. Altura da Planta em cm):
+          </strong>
+          <div style="display:flex; gap:1rem; font-size:0.78rem;">
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;">
+              <span style="width:16px; height:3px; background:#16a34a; display:inline-block;"></span>
+              <strong>Plantio Direto (SPD)</strong>
+            </span>
+            <span style="display:inline-flex; align-items:center; gap:0.35rem;">
+              <span style="width:16px; height:3px; border-top:3px dashed #d97706; display:inline-block;"></span>
+              <strong>Convencional (SPC)</strong>
+            </span>
+          </div>
+        </div>
+
+        <div style="width:100%; overflow-x:auto;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; min-width:540px; height:auto; display:block;">
+            <!-- Grid horizontal -->
+            ${gridY
+              .map((val) => {
+                const y = toY(val);
+                return `
+                <line x1="${padL}" y1="${y}" x2="${padL + plotW}" y2="${y}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3" />
+                <text x="${padL - 8}" y="${y + 4}" fill="#64748b" font-size="10" text-anchor="end">${val} cm</text>
+              `;
+              })
+              .join('')}
+
+            <!-- Eixo X e Y -->
+            <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+            <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#94a3b8" stroke-width="1.5" />
+
+            <!-- Labels Eixo X (DAE) -->
+            ${[15, 30, 45, 60, 75]
+              .map((d) => {
+                const x = toX(d);
+                return `
+                <line x1="${x}" y1="${padT + plotH}" x2="${x}" y2="${padT + plotH + 5}" stroke="#94a3b8" stroke-width="1.2" />
+                <text x="${x}" y="${padT + plotH + 18}" fill="#64748b" font-size="10" text-anchor="middle">${d} DAE</text>
+              `;
+              })
+              .join('')}
+
+            <!-- Linha e pontos Convencional (SPC) -->
+            ${
+              pathSPC
+                ? `
+              <path d="${pathSPC}" fill="none" stroke="#d97706" stroke-width="2.6" stroke-dasharray="5,3" stroke-linecap="round" />
+              ${ptsSPC
+                .map(
+                  (p) => `
+                <circle cx="${toX(p.dae)}" cy="${toY(p.altura)}" r="4.5" fill="#d97706" stroke="#ffffff" stroke-width="2" />
+                <text x="${toX(p.dae)}" y="${toY(p.altura) - 8}" fill="#b45309" font-size="9" font-weight="700" text-anchor="middle">${p.altura} cm</text>
+              `
+                )
+                .join('')}
+            `
+                : ''
+            }
+
+            <!-- Linha e pontos Plantio Direto (SPD) -->
+            ${
+              pathSPD
+                ? `
+              <path d="${pathSPD}" fill="none" stroke="#16a34a" stroke-width="3.2" stroke-linecap="round" />
+              ${ptsSPD
+                .map(
+                  (p) => `
+                <circle cx="${toX(p.dae)}" cy="${toY(p.altura)}" r="5.5" fill="#16a34a" stroke="#ffffff" stroke-width="2.5" />
+                <text x="${toX(p.dae)}" y="${toY(p.altura) - 10}" fill="#15803d" font-size="10" font-weight="800" text-anchor="middle">${p.altura} cm</text>
+              `
+                )
+                .join('')}
+            `
+                : ''
+            }
+          </svg>
+        </div>
+      </div>
+    `;
+  },
+
+  // ==========================================================================
+  // MODAIS E MANIPULAÇÃO DA PLANILHA E ATRIBUTOS
+  // ==========================================================================
+  abrirModalGerenciarColunasPlanilha() {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('editar colunas da planilha')) return;
+    const planilha = core.db.sipa?.lavouraMilho?.planilhaCrescimento || { colunas: [] };
+    const colunas = planilha.colunas || [];
+
+    this.abrirModalGenerico(
+      '📐 Gerenciar &amp; Renomear Colunas Superiores da Planilha',
+      `
+        <form onsubmit="AmadeusViews.salvarEstruturaColunasPlanilha(event)">
+          <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
+            Aqui o professor pode <strong>mudar os nomes das colunas de cima</strong>, adicionar novos atributos de avaliação e remover parâmetros que não queira medir:
+          </p>
+
+          <div style="font-weight:700; font-size:0.84rem; color:var(--slate-800); margin-bottom:0.5rem;">
+            Colunas Atuais da Planilha:
+          </div>
+          <div style="max-height:240px; overflow-y:auto; border:1px solid var(--slate-200); border-radius:8px; padding:0.6rem; background:#fff; margin-bottom:1.25rem;">
+            ${colunas
+              .map(
+                (c, idx) => `
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; padding-bottom:0.4rem; border-bottom:1px solid var(--slate-100);">
+                <span style="width:24px; font-weight:700; color:var(--slate-400); font-size:0.75rem;">${idx + 1}.</span>
+                <input type="text" name="col_label_${c.id}" class="form-control" value="${c.label}" required style="font-size:0.85rem;" placeholder="Nome da coluna..." />
+                <span class="role-badge role-comum" style="font-size:0.7rem; white-space:nowrap;">${c.tipo || 'texto'}</span>
+                ${
+                  colunas.length > 2
+                    ? `
+                  <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('div').remove()" title="Remover coluna">✖</button>
+                `
+                    : ''
+                }
+                <input type="hidden" name="col_id_${c.id}" value="${c.id}" />
+                <input type="hidden" name="col_tipo_${c.id}" value="${c.tipo || 'text'}" />
+              </div>
+            `
+              )
+              .join('')}
+          </div>
+
+          <!-- Adicionar Nova Coluna -->
+          <div style="background:var(--slate-50); border:1px dashed var(--slate-300); border-radius:8px; padding:0.85rem; margin-bottom:1.25rem;">
+            <strong style="font-size:0.84rem; color:var(--slate-800);">➕ Adicionar Nova Coluna Superior:</strong>
+            <div class="form-grid" style="margin-top:0.5rem;">
+              <div class="form-group">
+                <label>Nome do Novo Parâmetro / Coluna</label>
+                <input type="text" id="nova-col-nome" class="form-control" placeholder="Ex: Área Foliar, Massa Fresca..." />
+              </div>
+              <div class="form-group">
+                <label>Tipo de Dado</label>
+                <select id="nova-col-tipo" class="form-control">
+                  <option value="number">Número (Medição quantitativa)</option>
+                  <option value="text">Texto (Descrição / Parâmetro)</option>
+                  <option value="date">Data</option>
+                  <option value="select">Seleção (Manejo/Tratamento)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Estrutura de Colunas</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarEstruturaColunasPlanilha(e) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    const form = e.target;
+    if (!core.db.sipa.lavouraMilho) core.db.sipa.lavouraMilho = {};
+    if (!core.db.sipa.lavouraMilho.planilhaCrescimento) {
+      core.db.sipa.lavouraMilho.planilhaCrescimento = { colunas: [], linhas: [] };
+    }
+
+    const novasColunas = [];
+    // Varre os inputs de colunas existentes
+    const inputsLabel = form.querySelectorAll('input[name^="col_label_"]');
+    inputsLabel.forEach((inp) => {
+      const parent = inp.closest('div');
+      if (!parent) return;
+      const colId = parent.querySelector('input[name^="col_id_"]')?.value;
+      const colTipo = parent.querySelector('input[name^="col_tipo_"]')?.value || 'text';
+      if (colId && inp.value.trim()) {
+        novasColunas.push({
+          id: colId,
+          label: inp.value.trim(),
+          tipo: colTipo
+        });
+      }
+    });
+
+    // Nova coluna opcional
+    const novoNome = document.getElementById('nova-col-nome')?.value.trim();
+    const novoTipo = document.getElementById('nova-col-tipo')?.value || 'number';
+    if (novoNome) {
+      const novoId = 'col_' + Date.now();
+      novasColunas.push({
+        id: novoId,
+        label: novoNome,
+        tipo: novoTipo
+      });
+    }
+
+    core.db.sipa.lavouraMilho.planilhaCrescimento.colunas = novasColunas;
+    core.saveDatabase('Atualizou colunas da planilha de crescimento do milho');
+    core.toast('✅ Colunas da planilha salvas com sucesso!');
+    this.fecharModal();
+    this.renderMainContent();
+  },
+
+  abrirModalLinhaCrescimento(idExistente = null) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('inserir medição na planilha')) return;
+    const planilha = core.db.sipa?.lavouraMilho?.planilhaCrescimento || { colunas: [], linhas: [] };
+    const colunas = planilha.colunas || [];
+    const ex = idExistente ? (planilha.linhas || []).find((l) => l.id === idExistente) : null;
+
+    this.abrirModalGenerico(
+      ex ? '✏️ Editar Medição de Crescimento' : '➕ Nova Medição de Crescimento do Milho',
+      `
+        <form onsubmit="AmadeusViews.salvarLinhaCrescimento(event, '${ex ? ex.id : ''}')">
+          <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
+            Preencha os valores para cada um dos parâmetros configurados pelo professor na planilha:
+          </p>
+
+          <div class="form-grid">
+            ${colunas
+              .map((col) => {
+                const val = ex && ex[col.id] !== undefined ? ex[col.id] : '';
+                if (col.id === 'sistema' || col.tipo === 'select') {
+                  const opts = col.opcoes || ['Plantio Direto (SPD)', 'Convencional (SPC)'];
+                  return `
+                  <div class="form-group">
+                    <label>${col.label} *</label>
+                    <select id="campo-col-${col.id}" class="form-control" required>
+                      ${opts.map((o) => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('')}
+                    </select>
+                  </div>
+                `;
+                }
+                if (col.tipo === 'date' || col.id === 'data') {
+                  return `
+                  <div class="form-group">
+                    <label>${col.label} *</label>
+                    <input type="date" id="campo-col-${col.id}" class="form-control" value="${val || new Date().toISOString().slice(0, 10)}" required />
+                  </div>
+                `;
+                }
+                if (col.tipo === 'number') {
+                  return `
+                  <div class="form-group">
+                    <label>${col.label}</label>
+                    <input type="number" step="any" id="campo-col-${col.id}" class="form-control" value="${val}" placeholder="0" />
+                  </div>
+                `;
+                }
+                return `
+                <div class="form-group">
+                  <label>${col.label}</label>
+                  <input type="text" id="campo-col-${col.id}" class="form-control" value="${val}" placeholder="..." />
+                </div>
+              `;
+              })
+              .join('')}
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Medição na Planilha</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarLinhaCrescimento(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    const planilha = core.db.sipa?.lavouraMilho?.planilhaCrescimento;
+    if (!planilha) return;
+    if (!Array.isArray(planilha.linhas)) planilha.linhas = [];
+
+    const linha = {
+      id: idExistente || 'row-' + Date.now()
+    };
+
+    (planilha.colunas || []).forEach((col) => {
+      const el = document.getElementById('campo-col-' + col.id);
+      if (el) {
+        if (col.tipo === 'number') {
+          linha[col.id] = el.value !== '' ? parseFloat(el.value) : 0;
+        } else {
+          linha[col.id] = el.value.trim();
+        }
+      }
+    });
+
+    if (idExistente) {
+      const idx = planilha.linhas.findIndex((l) => l.id === idExistente);
+      if (idx !== -1) planilha.linhas[idx] = linha;
+    } else {
+      planilha.linhas.push(linha);
+    }
+
+    core.saveDatabase('Salvou linha na planilha de crescimento do milho');
+    core.toast('🌱 Medição registrada com sucesso na planilha!');
+    this.fecharModal();
+    this.renderMainContent();
+  },
+
+  excluirLinhaCrescimento(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('excluir medição')) return;
+    if (!confirm('Deseja realmente remover esta linha de medição da planilha?')) return;
+    const planilha = core.db.sipa?.lavouraMilho?.planilhaCrescimento;
+    if (!planilha) return;
+    planilha.linhas = (planilha.linhas || []).filter((l) => l.id !== id);
+    core.saveDatabase('Excluiu linha da planilha de crescimento');
+    core.toast('Linha removida da planilha.');
+    this.renderMainContent();
+  },
+
+  abrirModalAtributoQualidade(idExistente = null) {
+    const core = window.AmadeusCore;
+    if (!core.requireCreate('gerenciar atributos')) return;
+    const atributos = core.db.sipa?.lavouraMilho?.atributosQualidade || [];
+    const ex = idExistente ? atributos.find((a) => a.id === idExistente) : null;
+    const item = ex || {
+      nome: '',
+      categoria: 'produtividade',
+      unidade: 'sc/ha',
+      spd: 120,
+      spc: 100,
+      menorMelhor: false,
+      descricao: ''
+    };
+
+    this.abrirModalGenerico(
+      ex ? '✏️ Editar Atributo de Qualidade' : '➕ Novo Atributo de Qualidade do Milho',
+      `
+        <form onsubmit="AmadeusViews.salvarAtributoQualidade(event, '${ex ? ex.id : ''}')">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nome do Atributo / Parâmetro *</label>
+              <input type="text" id="atr-nome" class="form-control" value="${item.nome}" placeholder="Ex: Clorofila Total, Massa Seca..." required />
+            </div>
+            <div class="form-group">
+              <label>Categoria *</label>
+              <select id="atr-cat" class="form-control" required>
+                <option value="produtividade" ${item.categoria === 'produtividade' ? 'selected' : ''}>Produtividade &amp; Biomassa</option>
+                <option value="bromatologia" ${item.categoria === 'bromatologia' ? 'selected' : ''}>Bromatologia &amp; Nutrição Animal</option>
+                <option value="biometria" ${item.categoria === 'biometria' ? 'selected' : ''}>Biometria de Planta</option>
+                <option value="espiga" ${item.categoria === 'espiga' ? 'selected' : ''}>Componentes de Espiga / Grão</option>
+                <option value="solo_raiz" ${item.categoria === 'solo_raiz' ? 'selected' : ''}>Sistema Radicular &amp; Solo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Unidade de Medida *</label>
+              <input type="text" id="atr-unid" class="form-control" value="${item.unidade}" placeholder="Ex: %, sc/ha, cm, mm, t/ha" required />
+            </div>
+            <div class="form-group">
+              <label>Valor no Plantio Direto (SPD) *</label>
+              <input type="number" step="any" id="atr-spd" class="form-control" value="${item.spd}" required />
+            </div>
+            <div class="form-group">
+              <label>Valor no Convencional (SPC) *</label>
+              <input type="number" step="any" id="atr-spc" class="form-control" value="${item.spc}" required />
+            </div>
+            <div class="form-group">
+              <label>Interpretação</label>
+              <select id="atr-menor-melhor" class="form-control">
+                <option value="0" ${!item.menorMelhor ? 'selected' : ''}>Maior valor é melhor (Ex: Produtividade, PB, NDT)</option>
+                <option value="1" ${item.menorMelhor ? 'selected' : ''}>Menor valor é melhor (Ex: FDN, FDA, acamamento)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.25rem;">
+            <label>Descrição / Análise Agronômica</label>
+            <textarea id="atr-desc" class="form-control" rows="2" placeholder="Explicação científica ou técnica do parâmetro...">${item.descricao || ''}</textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Atributo</button>
+          </div>
+        </form>
+      `
+    );
+  },
+
+  salvarAtributoQualidade(e, idExistente) {
+    e.preventDefault();
+    const core = window.AmadeusCore;
+    if (!core.db.sipa.lavouraMilho) core.db.sipa.lavouraMilho = {};
+    if (!Array.isArray(core.db.sipa.lavouraMilho.atributosQualidade)) {
+      core.db.sipa.lavouraMilho.atributosQualidade = [];
+    }
+
+    const novo = {
+      id: idExistente || 'atr-' + Date.now(),
+      nome: document.getElementById('atr-nome').value.trim(),
+      categoria: document.getElementById('atr-cat').value,
+      unidade: document.getElementById('atr-unid').value.trim(),
+      spd: parseFloat(document.getElementById('atr-spd').value) || 0,
+      spc: parseFloat(document.getElementById('atr-spc').value) || 0,
+      menorMelhor: document.getElementById('atr-menor-melhor').value === '1',
+      descricao: document.getElementById('atr-desc').value.trim()
+    };
+
+    if (idExistente) {
+      const idx = core.db.sipa.lavouraMilho.atributosQualidade.findIndex((x) => x.id === idExistente);
+      if (idx !== -1) core.db.sipa.lavouraMilho.atributosQualidade[idx] = novo;
+    } else {
+      core.db.sipa.lavouraMilho.atributosQualidade.push(novo);
+    }
+
+    core.saveDatabase(`Salvou atributo de qualidade do milho: ${novo.nome}`);
+    core.toast('🌽 Atributo de qualidade do milho salvo com sucesso!');
+    this.fecharModal();
+    this.renderMainContent();
+  },
+
+  excluirAtributoQualidade(id) {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('excluir atributo de qualidade')) return;
+    if (!confirm('Deseja excluir este atributo de qualidade comparativo?')) return;
+    const lav = core.db.sipa?.lavouraMilho;
+    if (!lav) return;
+    lav.atributosQualidade = (lav.atributosQualidade || []).filter((x) => x.id !== id);
+    core.saveDatabase('Excluiu atributo de qualidade');
+    core.toast('Atributo removido.');
+    this.renderMainContent();
+  },
+
+  exportarPlanilhaCrescimentoCsv() {
+    const core = window.AmadeusCore;
+    const planilha = core.db.sipa?.lavouraMilho?.planilhaCrescimento;
+    if (!planilha || !Array.isArray(planilha.colunas) || planilha.colunas.length === 0) {
+      core.toast('⚠️ A planilha não possui dados para exportar.', 'aviso');
+      return;
+    }
+
+    const headers = planilha.colunas.map((c) => `"${c.label.replace(/"/g, '""')}"`).join(';');
+    const rows = (planilha.linhas || []).map((l) =>
+      planilha.colunas
+        .map((c) => {
+          const val = l[c.id] !== undefined && l[c.id] !== null ? String(l[c.id]) : '';
+          return `"${val.replace(/"/g, '""')}"`;
+        })
+        .join(';')
+    );
+
+    const csvContent = '\uFEFF' + [headers, ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `planilha_crescimento_milho_sipa_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    core.toast('📥 Planilha exportada com sucesso (formato Excel / CSV)!');
+  },
+
+  restaurarPadraoPlanilhaCrescimento() {
+    const core = window.AmadeusCore;
+    if (!core.requireAdmin('restaurar dados padrão')) return;
+    if (!confirm('Deseja restaurar as colunas e medições da planilha para o padrão inicial do experimento?')) return;
+
+    if (!core.db.sipa.lavouraMilho) core.db.sipa.lavouraMilho = {};
+    core.db.sipa.lavouraMilho.planilhaCrescimento = {
+      titulo: 'Registro Biométrico e Acompanhamento de Crescimento do Milho',
+      safra: '2025/2026',
+      colunas: [
+        { id: 'data', label: 'Data Coleta', tipo: 'date' },
+        { id: 'dae', label: 'DAE (Dias)', tipo: 'number' },
+        { id: 'estadio', label: 'Estádio Fenológico', tipo: 'text' },
+        { id: 'sistema', label: 'Sistema de Manejo', tipo: 'select', opcoes: ['Plantio Direto (SPD)', 'Convencional (SPC)'] },
+        { id: 'altura', label: 'Altura Planta (cm)', tipo: 'number' },
+        { id: 'folhas', label: 'Nº Folhas Verdes', tipo: 'number' },
+        { id: 'diametro', label: 'Diâm. Colmo (mm)', tipo: 'number' },
+        { id: 'spad', label: 'Clorofila (SPAD)', tipo: 'number' },
+        { id: 'obs', label: 'Observações do Professor', tipo: 'text' }
+      ],
+      linhas: [
+        { id: 'row-1', data: '2026-02-15', dae: 15, estadio: 'V3', sistema: 'Plantio Direto (SPD)', altura: 28, folhas: 4, diametro: 9.5, spad: 42.5, obs: 'Excelente germinação e vigor inicial sob palhada de braquiária.' },
+        { id: 'row-2', data: '2026-02-15', dae: 15, estadio: 'V3', sistema: 'Convencional (SPC)', altura: 22, folhas: 3, diametro: 7.8, spad: 37.9, obs: 'Solo descoberto, formação de crosta superficial e rápida dessecação.' },
+        { id: 'row-3', data: '2026-03-02', dae: 30, estadio: 'V6', sistema: 'Plantio Direto (SPD)', altura: 82, folhas: 7, diametro: 17.2, spad: 52.0, obs: 'Adubação de cobertura aplicada. Raízes com forte penetração no perfil.' },
+        { id: 'row-4', data: '2026-03-02', dae: 30, estadio: 'V5-V6', sistema: 'Convencional (SPC)', altura: 65, folhas: 6, diametro: 14.1, spad: 44.8, obs: 'Leve enrolamento foliar em horários de pico térmico.' },
+        { id: 'row-5', data: '2026-03-22', dae: 50, estadio: 'V10', sistema: 'Plantio Direto (SPD)', altura: 176, folhas: 11, diametro: 23.4, spad: 57.5, obs: 'Fechamento do dossel pleno. Solo com umidade estável mesmo sem chuvas recentes.' },
+        { id: 'row-6', data: '2026-03-22', dae: 50, estadio: 'V9-V10', sistema: 'Convencional (SPC)', altura: 149, folhas: 9, diametro: 18.5, spad: 48.6, obs: 'Colmo mais fino e menor área foliar fotossinteticamente ativa.' },
+        { id: 'row-7', data: '2026-04-10', dae: 70, estadio: 'VT / R1', sistema: 'Plantio Direto (SPD)', altura: 242, folhas: 14, diametro: 25.0, spad: 59.8, obs: 'Pendoamento e polinização síncrona com emissão vigorosa de espigas.' },
+        { id: 'row-8', data: '2026-04-10', dae: 70, estadio: 'VT / R1', sistema: 'Convencional (SPC)', altura: 210, folhas: 12, diametro: 20.1, spad: 51.2, obs: 'Pendoamento menos uniforme, menor largura de folha da espiga.' }
+      ]
+    };
+    core.saveDatabase('Restaurou planilha de crescimento padrão');
+    core.toast('Planilha restaurada para o padrão inicial.');
+    this.renderMainContent();
   },
 
   // ==========================================================================
