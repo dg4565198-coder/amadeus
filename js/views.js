@@ -505,6 +505,7 @@ const AmadeusViews = {
   viewDashboard() {
     const core = window.AmadeusCore;
     const db = core.db;
+    const u = core.currentUser || { nome: 'Usuário' };
     const ch2025 = db.chuvas.filter((c) => c.data.startsWith('2025'));
     const ch2026 = db.chuvas.filter((c) => c.data.startsWith('2026'));
     const mm2025 = ch2025.reduce((s, r) => s + Number(r.mm), 0);
@@ -513,129 +514,202 @@ const AmadeusViews = {
     const gmds = db.animais.map((a) => core.calcularMetricasAnimal(a).gmdGlobal);
     const gmdMedioRebanho = gmds.length ? gmds.reduce((s, v) => s + v, 0) / gmds.length : 0;
 
-    const totalHorasEquipe = db.pessoas.reduce((s, p) => {
-      const hAtv = db.atividades
-        .filter((a) => (a.responsaveisIds || []).includes(p.id))
-        .reduce((acc, a) => acc + (Number(a.horasTrabalhadas) || 0), 0);
-      return s + (Number(p.horasBase) || 0) + hAtv;
-    }, 0);
+    const plantiosSipa = db.sipa?.plantios || [];
+    const areaTotalHa = plantiosSipa.reduce((s, p) => s + (Number(p.areaHa) || 0), 0);
 
     const pendentes = db.usuarios.filter((u) => u.statusAcesso === 'pendente');
-    const descModo = core.isAdmin()
-      ? '👑 Modo Administrador: permissão total para cadastrar, editar, excluir registros e autorizar usuários'
-      : core.isColaborador()
-      ? '🛠️ Modo Colaborador: permissão para consultar, exportar PDFs e cadastrar novos registros (edição e exclusão bloqueadas)'
-      : '👁️ Modo Leitor: permissão exclusiva de leitura e exportação de relatórios PDF/CSV (cadastros, edições e exclusões bloqueados)';
 
     return `
+      <!-- Alerta Discreto de Usuários Pendentes (Somente Admin) -->
       ${
         core.isAdmin() && pendentes.length > 0
           ? `
-        <div class="alert-banner alert-warning" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
-          <div style="display:flex; gap:0.65rem; align-items:center;">
-            <span style="font-size:1.3rem;">🔔</span>
-            <div>
-              <strong>Atenção Administrador: existem ${pendentes.length} solicitação(ões) de cadastro aguardando sua autorização!</strong><br/>
-              Usuários pendentes: ${pendentes.map((p) => `<strong>${p.nome}</strong> (${p.email})`).join(', ')}
+        <div class="alert-banner alert-warning" style="justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:1rem; padding:0.75rem 1rem;">
+          <div style="display:flex; gap:0.6rem; align-items:center;">
+            <span style="font-size:1.2rem;">🔔</span>
+            <div style="font-size:0.86rem;">
+              <strong>${pendentes.length} solicitação(ões) pendente(s):</strong> ${pendentes.map((p) => p.nome).join(', ')}
             </div>
           </div>
           <button class="btn btn-sm btn-primary" onclick="AmadeusViews.navegar('admin')">
-            ✅ Revisar e Autorizar na Aba Admin
+            Revisar Acessos
           </button>
         </div>
       `
           : ''
       }
 
-      <div class="kpi-grid">
-        <div class="kpi-card blue" onclick="AmadeusViews.navegar('pluviometria')" style="cursor:pointer;">
-          <div class="kpi-label">Chuva Acumulada 2025</div>
-          <div class="kpi-value">${mm2025.toFixed(1)} mm</div>
-          <div class="kpi-sub">${ch2025.length} leituras (Maio a Dez/2025)</div>
+      <!-- Cabeçalho Clean de Boas-Vindas -->
+      <div class="page-header-clean">
+        <div>
+          <div class="page-title">
+            👋 Olá, ${u.nome.split(' ')[0]}
+            <span class="role-badge ${core.isAdmin() ? 'role-admin' : 'role-comum'}" style="font-size:0.72rem; font-weight:700;">
+              ${core.getRoleLabel(u.perfil)}
+            </span>
+          </div>
+          <div class="page-subtitle">
+            AMADEUS · Gestão Agroecológica &amp; Sistema de Plantio Direto (Campus IF Baiano)
+          </div>
         </div>
-        <div class="kpi-card blue" onclick="AmadeusViews.navegar('pluviometria')" style="cursor:pointer;">
-          <div class="kpi-label">Chuva Acumulada 2026</div>
-          <div class="kpi-value">${mm2026.toFixed(1)} mm</div>
-          <div class="kpi-sub">${ch2026.length} leituras (Jan a Ago/2026)</div>
-        </div>
-        <div class="kpi-card" onclick="AmadeusViews.navegar('animais')" style="cursor:pointer;">
-          <div class="kpi-label">GMD Médio do Rebanho</div>
-          <div class="kpi-value">+${gmdMedioRebanho.toFixed(3)} kg/d</div>
-          <div class="kpi-sub">${db.animais.length} lotes/animais monitorados</div>
-        </div>
-        <div class="kpi-card amber" onclick="AmadeusViews.navegar('agendamento')" style="cursor:pointer;">
-          <div class="kpi-label">Tarefas Agendadas</div>
-          <div class="kpi-value">${db.agendamentos.length}</div>
-          <div class="kpi-sub">Cartões amarelos e verdes ativos</div>
-        </div>
-        <div class="kpi-card" onclick="AmadeusViews.navegar('pessoas')" style="cursor:pointer;">
-          <div class="kpi-label">Equipe & Carga Horária</div>
-          <div class="kpi-value">${totalHorasEquipe.toFixed(0)} h</div>
-          <div class="kpi-sub">${db.pessoas.length} colaboradores vinculados</div>
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <span class="status-pill" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:700; font-size:0.76rem;">
+            🟢 Safra 2025/2026 Ativa
+          </span>
+          <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.navegar('sipa')" style="font-size:0.8rem;">
+            🌱 Acessar SIPA
+          </button>
         </div>
       </div>
 
-      <div class="responsive-grid-2">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">📅 Próximos Agendamentos (Cartões Coloridos)</div>
-            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.navegar('agendamento')">Ver Agenda</button>
-          </div>
-          <div class="schedule-cards-grid">
-            ${db.agendamentos
-              .slice(0, 3)
-              .map(
-                (ag) => `
-              <div class="schedule-card card-${ag.corCartao}">
-                <div style="display:flex; justify-content:space-between; font-size:0.76rem; font-weight:700; margin-bottom:0.35rem;">
-                  <span>⏰ ${core.formatDateBR(ag.data)} às ${ag.horario}</span>
-                  <span>${ag.corCartao === 'verde' ? '🟢 Confirmada' : '🟡 Programada'}</span>
-                </div>
-                <div style="font-weight:800; font-size:0.96rem; margin-bottom:0.25rem;">${ag.titulo}</div>
-                <div style="font-size:0.8rem;">📍 ${ag.local} · 👤 ${ag.responsavel}</div>
-              </div>
-            `
-              )
-              .join('')}
+      <!-- KPIs Principais em Visual Limpo e Elegante -->
+      <div class="kpi-grid">
+        <div class="kpi-card blue" onclick="AmadeusViews.navegar('pluviometria')" style="cursor:pointer;" title="Ver histórico de chuvas completo">
+          <div class="kpi-label">🌧️ Chuva 2026</div>
+          <div class="kpi-value" style="color:#0284c7;">${mm2026.toFixed(1)} mm</div>
+          <div class="kpi-sub">Total 2025/26: <strong>${(mm2025 + mm2026).toFixed(0)} mm</strong> (${db.chuvas.length} leituras)</div>
+        </div>
+
+        <div class="kpi-card" onclick="AmadeusViews.navegar('animais')" style="cursor:pointer;" title="Ver rebanho e lotes">
+          <div class="kpi-label">🐄 GMD Médio Rebanho</div>
+          <div class="kpi-value" style="color:#15803d;">+${gmdMedioRebanho.toFixed(3)} kg/d</div>
+          <div class="kpi-sub">${db.animais.length} animais · ${db.lotesPasto?.length || 2} lotes monitorados</div>
+        </div>
+
+        <div class="kpi-card" onclick="AmadeusViews.navegar('sipa')" style="cursor:pointer; border-left-color:#16a34a;" title="Ver módulo SIPA">
+          <div class="kpi-label">🌱 Área SIPA (SPD)</div>
+          <div class="kpi-value" style="color:#166534;">${areaTotalHa > 0 ? areaTotalHa.toFixed(1) + ' ha' : '1.5 ha'}</div>
+          <div class="kpi-sub">${plantiosSipa.length || 1} gleba implantada · Milho + Braquiária</div>
+        </div>
+
+        <div class="kpi-card amber" onclick="AmadeusViews.navegar('agendamento')" style="cursor:pointer;" title="Ver agenda de campo">
+          <div class="kpi-label">📅 Próximas Atividades</div>
+          <div class="kpi-value" style="color:#d97706;">${db.agendamentos.length}</div>
+          <div class="kpi-sub">Manejos e avaliações agendadas</div>
+        </div>
+      </div>
+
+      <!-- Grade de Atalhos Rápidos (Clean Cards) -->
+      <div class="quick-shortcuts-grid">
+        <div class="shortcut-card" onclick="AmadeusViews.navegar('sipa')">
+          <div class="shortcut-icon" style="background:#dcfce7; color:#15803d;">🌱</div>
+          <div class="shortcut-info">
+            <span class="shortcut-title">Módulo SIPA</span>
+            <span class="shortcut-desc">Plantios, palhada, mapa e milho</span>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">🌧️ Destaques Pluviométricos 2025–2026</div>
-            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.navegar('pluviometria')">Abrir Painel de Chuvas</button>
+        <div class="shortcut-card" onclick="AmadeusViews.navegar('pluviometria')">
+          <div class="shortcut-icon" style="background:#e0f2fe; color:#0284c7;">🌧️</div>
+          <div class="shortcut-info">
+            <span class="shortcut-title">Pluviometria Oficial</span>
+            <span class="shortcut-desc">Leituras diárias 2025 &amp; 2026</span>
           </div>
-          <p style="font-size:0.86rem; color:var(--slate-600); margin-bottom:0.85rem;">
-            Total consolidado na Área Experimental: <strong>${(mm2025 + mm2026).toFixed(1)} mm</strong> em <strong>${db.chuvas.length} dias monitorados</strong>.
-          </p>
+        </div>
+
+        <div class="shortcut-card" onclick="AmadeusViews.navegar('animais')">
+          <div class="shortcut-icon" style="background:#fef3c7; color:#b45309;">🐄</div>
+          <div class="shortcut-info">
+            <span class="shortcut-title">Animais &amp; Lotes</span>
+            <span class="shortcut-desc">GMD, sanidade e rotação de pasto</span>
+          </div>
+        </div>
+
+        <div class="shortcut-card" onclick="AmadeusViews.navegar('atividades')">
+          <div class="shortcut-icon" style="background:#ede9fe; color:#6d28d9;">🚜</div>
+          <div class="shortcut-info">
+            <span class="shortcut-title">Atividades Rurais</span>
+            <span class="shortcut-desc">Histórico operacional da equipe</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção Principal Dividida em 2 Colunas Limpas -->
+      <div class="responsive-grid-2">
+        <!-- Coluna 1: Próximos Agendamentos -->
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header" style="margin-bottom:0.75rem;">
+            <div class="card-title" style="font-size:1.02rem;">
+              📅 Agenda Operacional de Campo
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.navegar('agendamento')" style="font-size:0.78rem;">
+              Ver Agenda Completa
+            </button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.65rem;">
+            ${
+              db.agendamentos.length === 0
+                ? `<div style="text-align:center; padding:1.5rem; color:var(--slate-500); font-size:0.85rem;">Nenhum agendamento pendente.</div>`
+                : db.agendamentos
+                    .slice(0, 3)
+                    .map(
+                      (ag) => `
+                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid ${ag.corCartao === 'verde' ? '#16a34a' : '#f59e0b'}; border-radius:10px; padding:0.75rem 0.9rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; margin-bottom:0.25rem;">
+                      <span style="font-weight:700; color:#475569;">⏰ ${core.formatDateBR(ag.data)} às ${ag.horario}</span>
+                      <span class="role-badge" style="background:${ag.corCartao === 'verde' ? '#dcfce7' : '#fef3c7'}; color:${ag.corCartao === 'verde' ? '#15803d' : '#92400e'}; font-size:0.7rem; font-weight:700;">
+                        ${ag.corCartao === 'verde' ? 'Confirmada' : 'Programada'}
+                      </span>
+                    </div>
+                    <div style="font-weight:700; font-size:0.92rem; color:var(--slate-900); margin-bottom:0.2rem;">
+                      ${ag.titulo}
+                    </div>
+                    <div style="font-size:0.78rem; color:var(--slate-500);">
+                      📍 ${ag.local} &nbsp;·&nbsp; 👤 ${ag.responsavel}
+                    </div>
+                  </div>
+                `
+                    )
+                    .join('')
+            }
+          </div>
+        </div>
+
+        <!-- Coluna 2: Síntese Pluviométrica Consolidada -->
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header" style="margin-bottom:0.75rem;">
+            <div class="card-title" style="font-size:1.02rem;">
+              🌧️ Síntese de Chuvas (Área Experimental)
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.navegar('pluviometria')" style="font-size:0.78rem;">
+              Abrir Gráficos
+            </button>
+          </div>
+
           <div class="table-responsive">
-            <table class="data-table">
+            <table class="data-table" style="font-size:0.83rem;">
               <thead>
                 <tr>
                   <th>Ano</th>
-                  <th>Período Medido</th>
-                  <th>Leituras</th>
+                  <th>Período</th>
+                  <th>Dias</th>
                   <th>Acumulado</th>
                   <th>Pico Diário</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>2025</strong></td>
-                  <td>06/05/2025 a 30/12/2025</td>
+                  <td><strong style="color:#0284c7;">2025</strong></td>
+                  <td>Maio a Dezembro</td>
                   <td>${ch2025.length} dias</td>
                   <td><strong>${mm2025.toFixed(1)} mm</strong></td>
-                  <td>86,0 mm (05/12/2025)</td>
+                  <td>86,0 mm</td>
                 </tr>
                 <tr>
-                  <td><strong>2026</strong></td>
-                  <td>02/01/2026 a 27/08/2026</td>
+                  <td><strong style="color:#15803d;">2026</strong></td>
+                  <td>Janeiro a Agosto</td>
                   <td>${ch2026.length} dias</td>
                   <td><strong>${mm2026.toFixed(1)} mm</strong></td>
-                  <td>150,0 mm (02/03/2026)</td>
+                  <td>150,0 mm</td>
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <div style="margin-top:0.75rem; background:#f8fafc; border-radius:8px; padding:0.6rem 0.85rem; font-size:0.78rem; color:var(--slate-600); display:flex; justify-content:space-between; align-items:center;">
+            <span>💧 Total consolidado no campus: <strong>${(mm2025 + mm2026).toFixed(1)} mm</strong></span>
+            <span style="font-weight:700; color:#15803d;">${db.chuvas.length} medições</span>
           </div>
         </div>
       </div>
@@ -3013,89 +3087,81 @@ const AmadeusViews = {
     const totalSemLote = animais.filter((a) => !a.lote || a.lote.trim() === '' || a.lote.toLowerCase() === 'sem lote').length;
 
     return `
-      <!-- Cabeçalho Institucional do Módulo de Animais -->
-      <div class="card" style="background:linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #0369a1 100%); color:#ffffff; border:none; margin-bottom:1.25rem;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
-          <div>
-            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.18); padding:0.22rem 0.7rem; border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.45rem;">
-              🐄 MÓDULO ANIMAIS · MANEJO PECUÁRIO, LOTES &amp; PASTAGENS
-            </div>
-            <h2 style="font-size:1.45rem; font-weight:800; margin-bottom:0.25rem; line-height:1.2;">
-              Animais — Rebanho, GMD, Montagem de Lotes, Sanidade &amp; Pastagens
-            </h2>
-            <p style="font-size:0.84rem; color:#e0f2fe; max-width:780px;">
-              Gestão zootécnica integrada: curva de ganho de peso (GMD), montagem de lotes exclusivos por pasto, checklist sanitário de bebedouros e controle de forrageiras no campus.
-            </p>
+      <!-- Cabeçalho Clean do Módulo de Animais -->
+      <div class="page-header-clean">
+        <div>
+          <div class="page-title">
+            🐄 Animais — Rebanho, Lotes &amp; Pastagens
+            <span class="role-badge role-comum" style="font-size:0.72rem; font-weight:700;">Zootecnia IF Baiano</span>
           </div>
-          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
-            ${
-              canCreate
-                ? `
-              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalAnimal()">
-                ➕ Cadastrar Animal
-              </button>
-              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#1e40af; border:none;" onclick="AmadeusViews.abrirModalCriarLotePasto()">
-                🏷️ Novo Lote de Pasto
-              </button>
-              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#0369a1; border:none;" onclick="AmadeusViews.abrirModalChecklistSanidade()">
-                📋 Novo Checklist Sanidade
-              </button>
-              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#15803d; border:none;" onclick="AmadeusViews.abrirModalAvaliacaoPastagem()">
-                🌱 Avaliar Piquete / Pastagem
-              </button>
-            `
-                : `<span class="status-pill">👁️ Somente Leitura</span>`
-            }
+          <div class="page-subtitle">
+            Acompanhamento zootécnico integrado · Ganho Médio Diário (GMD), montagem de lotes e rotação de pastagens
           </div>
+        </div>
+        <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+          ${
+            canCreate
+              ? `
+            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAnimal()" style="font-size:0.8rem;">
+              ➕ Cadastrar Animal
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalCriarLotePasto()" style="font-size:0.8rem;">
+              🏷️ Novo Lote
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalChecklistSanidade()" style="font-size:0.8rem;">
+              📋 Checklist Sanidade
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAvaliacaoPastagem()" style="font-size:0.8rem;">
+              🌱 Avaliar Pasto
+            </button>
+          `
+              : `<span class="status-pill">👁️ Leitor</span>`
+          }
         </div>
       </div>
 
-      <!-- KPIs Zootécnicos e de Manejo do Rebanho -->
+      <!-- KPIs Zootécnicos e de Manejo do Rebanho (Clean Cards) -->
       <div class="kpi-grid">
         <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('rebanho')" style="cursor:pointer;">
           <div class="kpi-label">Rebanho Monitorado</div>
           <div class="kpi-value">${animais.length} animais</div>
           <div class="kpi-sub">Cadastrados no campus</div>
         </div>
-        <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('lotes')" style="cursor:pointer; border-left:4px solid #f59e0b;">
+        <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('lotes')" style="cursor:pointer; border-left-color:#f59e0b;">
           <div class="kpi-label">Lotes Formados</div>
           <div class="kpi-value">${lotesPasto.length} lotes</div>
-          <div class="kpi-sub">${totalSemLote > 0 ? `⚠️ ${totalSemLote} animal(is) sem lote` : 'Todos alocados em lote único'}</div>
+          <div class="kpi-sub">${totalSemLote > 0 ? `⚠️ ${totalSemLote} sem lote atribuído` : 'Todos em lote exclusivo'}</div>
         </div>
         <div class="kpi-card blue" onclick="AmadeusViews.setAnimaisSubTab('rebanho')" style="cursor:pointer;">
-          <div class="kpi-label">GMD Médio do Rebanho</div>
-          <div class="kpi-value">+${gmdMedio.toFixed(3)} kg/d</div>
-          <div class="kpi-sub">Ganho médio diário consolidado</div>
+          <div class="kpi-label">GMD Médio</div>
+          <div class="kpi-value" style="color:#0284c7;">+${gmdMedio.toFixed(3)} kg/d</div>
+          <div class="kpi-sub">Ganho de peso consolidado</div>
         </div>
         <div class="kpi-card amber" onclick="AmadeusViews.setAnimaisSubTab('sanidade')" style="cursor:pointer;">
-          <div class="kpi-label">Checklists de Sanidade</div>
-          <div class="kpi-value">${checkSanidade.length}</div>
+          <div class="kpi-label">Checklists Sanidade</div>
+          <div class="kpi-value" style="color:#d97706;">${checkSanidade.length}</div>
           <div class="kpi-sub">Vistorias sanitárias e bebedouros</div>
         </div>
-        <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('pastagens')" style="cursor:pointer;">
-          <div class="kpi-label">Pastagens &amp; Piquetes</div>
-          <div class="kpi-value">${pastagens.length} piquetes</div>
+        <div class="kpi-card" onclick="AmadeusViews.setAnimaisSubTab('pastagens')" style="cursor:pointer; border-left-color:#16a34a;">
+          <div class="kpi-label">Piquetes / Pastagens</div>
+          <div class="kpi-value" style="color:#166534;">${pastagens.length} piquetes</div>
           <div class="kpi-sub">Altura média: <strong>${mediaAlturaPasto.toFixed(0)} cm</strong> (${totalAreaPasto.toFixed(1)} ha)</div>
         </div>
       </div>
 
-      <!-- Sub-pastas / Abas Internas de Organização -->
-      <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:1.15rem; background:#ffffff; padding:0.5rem; border-radius:12px; border:1px solid var(--slate-200);">
-        <button class="btn btn-sm ${sub === 'rebanho' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setAnimaisSubTab('rebanho')">
-          📈 Rebanho &amp; Curvas de GMD (${animais.length})
+      <!-- Sub-navegação em Segmented Control (Pills Modernas) -->
+      <div class="clean-tabs-nav">
+        <button class="clean-tab ${sub === 'rebanho' ? 'active' : ''}" onclick="AmadeusViews.setAnimaisSubTab('rebanho')">
+          🐄 Rebanho &amp; GMD (${animais.length})
         </button>
-        <button class="btn btn-sm ${sub === 'lotes' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setAnimaisSubTab('lotes')">
-          🏷️ Formação &amp; Transferência de Lotes (${lotesPasto.length})
+        <button class="clean-tab ${sub === 'lotes' ? 'active' : ''}" onclick="AmadeusViews.setAnimaisSubTab('lotes')">
+          🏷️ Formação de Lotes (${lotesPasto.length})
         </button>
-        <button class="btn btn-sm ${sub === 'sanidade' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setAnimaisSubTab('sanidade')">
-          🩺 Checklist de Sanidade &amp; Bebedouros (${checkSanidade.length})
+        <button class="clean-tab ${sub === 'sanidade' ? 'active' : ''}" onclick="AmadeusViews.setAnimaisSubTab('sanidade')">
+          📋 Sanidade &amp; Bebedouros (${checkSanidade.length})
         </button>
-        <button class="btn btn-sm ${sub === 'pastagens' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setAnimaisSubTab('pastagens')">
-          🌾 Condição do Pasto, Altura &amp; Forrageiras (${pastagens.length})
+        <button class="clean-tab ${sub === 'pastagens' ? 'active' : ''}" onclick="AmadeusViews.setAnimaisSubTab('pastagens')">
+          🌾 Pastagens &amp; Altura (${pastagens.length})
         </button>
       </div>
 
@@ -6168,83 +6234,74 @@ const AmadeusViews = {
         : 0;
 
     return `
-      <!-- Cabeçalho Institucional do Módulo SIPA -->
-      <div class="card" style="background:linear-gradient(135deg, #0f291a 0%, #166534 65%, #15803d 100%); color:#ffffff; border:none; margin-bottom:1.25rem;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
-          <div>
-            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.16); padding:0.22rem 0.7rem; border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.45rem;">
-              🌱 MÓDULO SIPA · SISTEMA DE PLANTIO DIRETO NO CAMPUS (IF BAIANO)
-            </div>
-            <h2 style="font-size:1.45rem; font-weight:800; margin-bottom:0.25rem; line-height:1.2;">
-              SIPA — Sistema de Plantio Direto (SPD) &amp; Manejo Integrado
-            </h2>
-            <p style="font-size:0.84rem; color:#dcfce7; max-width:780px;">
-              Central de registros de plantio, acompanhamento de glebas, avaliação de palhada/cobertura do solo, consórcios forrageiros e ferramentas técnicas de apoio ao projeto SIPA no campus.
-            </p>
+      <!-- Cabeçalho Clean do Módulo SIPA -->
+      <div class="page-header-clean">
+        <div>
+          <div class="page-title">
+            🌱 SIPA — Sistema de Plantio Direto &amp; Manejo Integrado
+            <span class="role-badge role-comum" style="font-size:0.72rem; font-weight:700;">Área IF Baiano</span>
           </div>
-          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
-            ${
-              canCreate
-                ? `
-              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalPlantioSipa()">
-                ➕ Novo Plantio / Gleba SPD
-              </button>
-              <button class="btn btn-sm btn-secondary" style="background:#ffffff; color:#14532d; border:none;" onclick="AmadeusViews.abrirModalAvaliacaoSipa()">
-                📋 Registrar Avaliação de Campo
-              </button>
-            `
-                : `<span class="status-pill">👁️ Modo Leitor</span>`
-            }
+          <div class="page-subtitle">
+            Gleba experimental no campus · Área monitorada: <strong>${areaTotalHa > 0 ? areaTotalHa.toFixed(2) : '1.50'} ha</strong> · Consórcios forrageiros e avaliação de palhada
           </div>
+        </div>
+        <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+          ${
+            canCreate
+              ? `
+            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPlantioSipa()" style="font-size:0.8rem;">
+              ➕ Novo Plantio
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalAvaliacaoSipa()" style="font-size:0.8rem;">
+              📋 Nova Avaliação
+            </button>
+          `
+              : `<span class="status-pill">👁️ Leitor</span>`
+          }
         </div>
       </div>
 
-      <!-- KPIs do Projeto SIPA & Plantio Direto -->
+      <!-- KPIs do Projeto SIPA & Plantio Direto (Clean Cards) -->
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Plantios / Glebas SPD</div>
           <div class="kpi-value">${plantios.length}</div>
-          <div class="kpi-sub">Área total monitorada: <strong>${areaTotalHa.toFixed(2)} ha</strong></div>
+          <div class="kpi-sub">Área total: <strong>${areaTotalHa.toFixed(2)} ha</strong></div>
         </div>
         <div class="kpi-card blue">
           <div class="kpi-label">Massa Seca / Palhada</div>
-          <div class="kpi-value">${mediaPalhada.toFixed(1)} t/ha</div>
-          <div class="kpi-sub">Referência ideal SPD: &ge; 6,0 t/ha</div>
+          <div class="kpi-value" style="color:#0284c7;">${mediaPalhada.toFixed(1)} t/ha</div>
+          <div class="kpi-sub">Referência ideal: &ge; 6,0 t/ha</div>
         </div>
         <div class="kpi-card amber">
-          <div class="kpi-label">Taxa de Cobertura do Solo</div>
-          <div class="kpi-value">${mediaCobertura > 0 ? mediaCobertura.toFixed(0) + '%' : '—'}</div>
-          <div class="kpi-sub">${avaliacoes.length} avaliação(ões) técnica(s) registrada(s)</div>
+          <div class="kpi-label">Taxa de Cobertura</div>
+          <div class="kpi-value" style="color:#d97706;">${mediaCobertura > 0 ? mediaCobertura.toFixed(0) + '%' : '—'}</div>
+          <div class="kpi-sub">${avaliacoes.length} avaliação(ões) de campo</div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Integração Clima × Plantio</div>
-          <div class="kpi-value">${core.db.chuvas.filter((c) => c.data.startsWith('2026')).reduce((s, r) => s + Number(r.mm), 0).toFixed(0)} mm</div>
-          <div class="kpi-sub">Acumulado 2026 na área experimental</div>
+        <div class="kpi-card" style="border-left-color:#16a34a;">
+          <div class="kpi-label">Chuva na Área (2026)</div>
+          <div class="kpi-value" style="color:#166534;">${core.db.chuvas.filter((c) => c.data.startsWith('2026')).reduce((s, r) => s + Number(r.mm), 0).toFixed(0)} mm</div>
+          <div class="kpi-sub">Pluviômetro oficial da área</div>
         </div>
       </div>
 
-      <!-- Sub-navegação Interna do Módulo SIPA -->
-      <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:1.15rem; background:#ffffff; padding:0.5rem; border-radius:12px; border:1px solid var(--slate-200);">
-        <button class="btn btn-sm ${sub === 'mapa' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setSipaSubTab('mapa')">
-          🗺️ Mapa &amp; Área no Campus (Satélite / Fotos)
+      <!-- Sub-navegação em Segmented Control (Pills Modernas) -->
+      <div class="clean-tabs-nav">
+        <button class="clean-tab ${sub === 'mapa' ? 'active' : ''}" onclick="AmadeusViews.setSipaSubTab('mapa')">
+          🗺️ Mapa &amp; Fotos
         </button>
-        <button class="btn btn-sm ${sub === 'plantios' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setSipaSubTab('plantios')">
-          🌾 Plantios, Culturas &amp; Glebas (${plantios.length})
+        <button class="clean-tab ${sub === 'plantios' ? 'active' : ''}" onclick="AmadeusViews.setSipaSubTab('plantios')">
+          🌾 Plantios (${plantios.length})
         </button>
-        <button class="btn btn-sm ${sub === 'avaliacoes' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setSipaSubTab('avaliacoes')">
-          🍂 Avaliações de Palhada, Solo &amp; Dados (${avaliacoes.length})
+        <button class="clean-tab ${sub === 'avaliacoes' ? 'active' : ''}" onclick="AmadeusViews.setSipaSubTab('avaliacoes')">
+          🍂 Palhada &amp; Solo (${avaliacoes.length})
         </button>
-        <button class="btn btn-sm ${sub === 'lavoura' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setSipaSubTab('lavoura')"
-          style="${sub === 'lavoura' ? '' : 'border-color:#f59e0b; color:#b45309; background:#fffbeb;'}">
+        <button class="clean-tab ${sub === 'lavoura' ? 'active' : ''}" onclick="AmadeusViews.setSipaSubTab('lavoura')"
+          style="${sub === 'lavoura' ? '' : 'color:#b45309;'}">
           🌽 Lavoura ${this.isSipaLavouraAutenticado() ? '🔓' : '🔒'}
         </button>
-        <button class="btn btn-sm ${sub === 'ferramentas' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setSipaSubTab('ferramentas')">
-          🧮 Calculadoras &amp; Ferramentas SPD
+        <button class="clean-tab ${sub === 'ferramentas' ? 'active' : ''}" onclick="AmadeusViews.setSipaSubTab('ferramentas')">
+          🧮 Calculadoras
         </button>
       </div>
 
@@ -7830,37 +7887,31 @@ const AmadeusViews = {
     const diffRaizPct = (((raizAttr.spd - raizAttr.spc) / raizAttr.spc) * 100).toFixed(0);
 
     return `
-      <!-- Cabeçalho Especial da Lavoura Desbloqueada -->
-      <div class="card" style="background:linear-gradient(135deg, #14532d 0%, #15803d 45%, #b45309 100%); color:#ffffff; border:none; margin-bottom:1.25rem;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
-          <div>
-            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.18); padding:0.22rem 0.75rem; border-radius:999px; font-size:0.72rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.45rem;">
-              🌽 LAVOURA EXPERIMENTAL DO MILHO · ÁREA RESERVADA (SIPA)
-            </div>
-            <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:0.25rem;">
-              Qualidade do Milho (Plantio Direto × Convencional) &amp; Planilha Biométrica
-            </h2>
-            <p style="font-size:0.84rem; color:#fef3c7; max-width:820px;">
-              Ensaio comparativo de atributos produtivos, bromatológicos e agronômicos entre <strong>Plantio Direto (SPD)</strong> e <strong>Plantio Convencional (SPC)</strong>, integrado à planilha dinâmica de crescimento vegetal configurada para as avaliações do professor.
-            </p>
+      <!-- Cabeçalho Clean da Lavoura -->
+      <div class="page-header-clean">
+        <div>
+          <div class="page-title">
+            🌽 Lavoura — Atributos do Milho &amp; Planilha
+            <span class="role-badge role-comum" style="font-size:0.72rem; font-weight:700;">Área Reservada SIPA</span>
           </div>
-          <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
-            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.bloquearLavouraSipa()" style="background:rgba(255,255,255,0.22); color:#ffffff; border:1px solid rgba(255,255,255,0.4);" title="Bloquear pasta com senha novamente">
-              🔒 Bloquear Pasta
-            </button>
+          <div class="page-subtitle">
+            Ensaio comparativo: Plantio Direto (SPD) × Convencional (SPC) &amp; planilha biométrica do professor
           </div>
+        </div>
+        <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+          <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.bloquearLavouraSipa()" title="Bloquear pasta com senha novamente" style="font-size:0.8rem;">
+            🔒 Bloquear Pasta
+          </button>
         </div>
       </div>
 
-      <!-- Navegação Interna da Lavoura -->
-      <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:1.15rem; background:#ffffff; padding:0.5rem; border-radius:12px; border:1px solid var(--slate-200);">
-        <button class="btn btn-sm ${sec === 'atributos' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setSipaLavouraSection('atributos')">
-          📊 Atributos de Qualidade &amp; Gráficos (SPD × Convencional)
+      <!-- Navegação Interna da Lavoura (Segmented Control Clean) -->
+      <div class="clean-tabs-nav">
+        <button class="clean-tab ${sec === 'atributos' ? 'active' : ''}" onclick="AmadeusViews.setSipaLavouraSection('atributos')">
+          📊 Atributos de Qualidade (SPD × Convencional)
         </button>
-        <button class="btn btn-sm ${sec === 'planilha' ? 'btn-primary' : 'btn-secondary'}"
-          onclick="AmadeusViews.setSipaLavouraSection('planilha')">
-          📋 Planilha de Registro de Crescimento do Milho (${planilha.linhas?.length || 0})
+        <button class="clean-tab ${sec === 'planilha' ? 'active' : ''}" onclick="AmadeusViews.setSipaLavouraSection('planilha')">
+          📋 Planilha de Crescimento (${planilha.linhas?.length || 0})
         </button>
       </div>
 
