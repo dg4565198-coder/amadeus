@@ -752,34 +752,39 @@ const AmadeusViews = {
           : ''
       }
 
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">🌧️ Monitoramento Pluviométrico & Apoio à Tomada de Decisão</div>
-            <div style="font-size:0.8rem; color:var(--slate-500);">
-              Análise de precipitação diária, soma progressiva acumulada, balanço hídrico e recomendações técnicas para manejo SIPA
-            </div>
+      <!-- Cabeçalho Clean Pluviometria -->
+      <div class="page-header-clean">
+        <div>
+          <div class="page-title">
+            🌧️ Pluviometria &amp; Apoio à Decisão
+            <span class="role-badge role-comum" style="font-size:0.72rem; font-weight:700;">Área IF Baiano</span>
           </div>
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            ${
-              canCreate
-                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalChuva()">➕ Registrar Chuva (mm)</button>`
-                : `<span class="status-pill" title="Modo Leitor: apenas consulta e exportação">👁️ Modo Leitor</span>`
-            }
-            <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.exportarCSVPluviometria()">📥 Exportar CSV</button>
-            <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.exportarRelatorioPluviometricoPDF()">📄 Relatório em PDF</button>
-            ${
-              isAdmin
-                ? `
-              <label class="btn btn-sm btn-secondary" style="margin:0;">
-                📤 Importar CSV
-                <input type="file" accept=".csv,.txt" style="display:none;" onchange="AmadeusViews.importarArquivoCSVChuva(this.files[0])" />
-              </label>
-            `
-                : ''
-            }
+          <div class="page-subtitle">
+            Série histórica 2025/2026 · Leituras diárias, curva acumulada e balanço hídrico para o manejo SIPA
           </div>
         </div>
+        <div style="display:flex; gap:0.45rem; flex-wrap:wrap; align-items:center;">
+          ${
+            canCreate
+              ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalChuva()" style="font-size:0.8rem;">➕ Registrar Chuva</button>`
+              : `<span class="status-pill">👁️ Leitor</span>`
+          }
+          <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.exportarCSVPluviometria()" style="font-size:0.8rem;">📥 CSV</button>
+          <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.exportarRelatorioPluviometricoPDF()" style="font-size:0.8rem;">📄 PDF</button>
+          ${
+            isAdmin
+              ? `
+            <label class="btn btn-sm btn-secondary" style="margin:0; font-size:0.8rem;">
+              📤 Importar CSV
+              <input type="file" accept=".csv,.txt" style="display:none;" onchange="AmadeusViews.importarArquivoCSVChuva(this.files[0])" />
+            </label>
+          `
+              : ''
+          }
+        </div>
+      </div>
+
+      <div class="card">
 
         <!-- Barra de Filtros -->
         <div class="form-grid" style="background:var(--slate-50); padding:0.9rem; border-radius:var(--radius-md); border:1px solid var(--slate-200);">
@@ -2078,57 +2083,56 @@ const AmadeusViews = {
     const rankingPart = Object.entries(mapaPart).sort((a, b) => b[1] - a[1]);
 
     return `
+      <div class="page-header-clean">
+        <div class="page-header-info">
+          <div class="page-header-title">
+            🚜 Gestão de Atividades Rurais
+            <span class="page-header-badge">Diário de Campo</span>
+          </div>
+          <div class="page-header-sub">Registro consolidado de serviços agrícolas, pecuários, pesquisas e horas de trabalho</div>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-secondary" onclick="AmadeusCore.exportarRelatorioAtividadesConsolidadoPDF()">
+            📄 Emitir Relatório PDF
+          </button>
+          ${
+            canCreate
+              ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalAtividade()">➕ Nova Atividade</button>`
+              : `<span class="status-pill">👁️ Leitura</span>`
+          }
+        </div>
+      </div>
+
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Atividades</div>
           <div class="kpi-value">${lista.length}</div>
-          <div class="kpi-sub">Registros consolidados no Diário de Campo</div>
+          <div class="kpi-sub">Registros consolidados</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Horas Registradas</div>
           <div class="kpi-value">${String(Number(totalHoras.toFixed(1))).replace('.', ',')} h</div>
-          <div class="kpi-sub">Soma das atividades executadas</div>
+          <div class="kpi-sub">Soma das atividades</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Participantes</div>
           <div class="kpi-value">${rankingPart.length}</div>
-          <div class="kpi-sub">Membros vinculados às atividades</div>
+          <div class="kpi-sub">Membros envolvidos</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Anexos</div>
           <div class="kpi-value">${totalAnexos}</div>
-          <div class="kpi-sub">Arquivos e registros anexados</div>
+          <div class="kpi-sub">Documentos e fotos</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">🚜 Diário de Campo — Relatório Consolidado de Atividades</div>
-            <div style="font-size:0.78rem; color:var(--slate-500);">
-              ${isAdmin ? '👑 Modo Admin: edição e exclusão liberadas para qualquer atividade lançada.' : canCreate ? '🛠️ Modo Colaborador: você pode cadastrar novas atividades; edição/exclusão restrita ao Admin.' : '👁️ Modo Leitor: visualização e exportação PDF das atividades executadas.'}
-            </div>
-          </div>
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-secondary" onclick="AmadeusCore.exportarRelatorioAtividadesConsolidadoPDF()">
-              📄 Emitir PDF de Atividades
-            </button>
-            ${
-              canCreate
-                ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalAtividade()">➕ Nova Atividade Rural</button>`
-                : `<span class="status-pill">👁️ Somente Leitura</span>`
-            }
-          </div>
-        </div>
-
-        <div class="form-grid" style="background:var(--slate-50); padding:0.85rem; border-radius:var(--radius-md); border:1px solid var(--slate-200);">
-          <div class="form-group">
-            <label>Pesquisar Atividade / Local / Participante</label>
-            <input type="text" class="form-control" placeholder="Buscar por serviço, descrição, local ou participante..."
+        <div class="clean-toolbar" style="margin-bottom:0.75rem;">
+          <div style="flex:1; min-width:240px;">
+            <input type="text" class="form-control" placeholder="🔍 Buscar por atividade, local, descrição ou participante..."
               value="${f.busca}" oninput="AmadeusCore.atvFilters.busca=this.value; AmadeusViews.renderMainContent();" />
           </div>
-          <div class="form-group">
-            <label>Setor / Categoria</label>
+          <div style="min-width:200px;">
             <select class="form-control" onchange="AmadeusCore.atvFilters.categoria=this.value; AmadeusViews.renderMainContent();">
               <option value="todas" ${f.categoria === 'todas' ? 'selected' : ''}>Todas as Categorias</option>
               <option value="Agricultura" ${f.categoria === 'Agricultura' ? 'selected' : ''}>Agricultura</option>
@@ -2410,20 +2414,22 @@ const AmadeusViews = {
     const lista = [...core.db.agendamentos].sort((a, b) => `${a.data} ${a.horario}`.localeCompare(`${b.data} ${b.horario}`));
 
     return `
+      <div class="page-header-clean">
+        <div class="page-header-info">
+          <div class="page-header-title">
+            📅 Agendamento de Atividades &amp; Lembretes
+            <span class="page-header-badge">Cronograma Inteligente</span>
+          </div>
+          <div class="page-header-sub">Gestão visual por cartões, notificações automáticas 2h antes e calculadora integrada</div>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-secondary" onclick="AmadeusCore.solicitarPermissaoNotificacao()">🔔 Ativar Notificações</button>
+          <button class="btn btn-amber" onclick="AmadeusViews.testarDisparoLembrete2h()">⚡ Testar Lembrete 2h</button>
+        </div>
+      </div>
+
       <div class="agendamento-layout-grid">
         <div class="card">
-          <div class="card-header">
-            <div>
-              <div class="card-title">📅 Agendamento de Atividades e Lembretes Automáticos</div>
-              <div style="font-size:0.8rem; color:var(--slate-500);">
-                Cartões <strong>Amarelos</strong> (Programados/Pendentes) e <strong>Verdes</strong> (Confirmados/Concluídos) · Notificação no cadastro e lembrete 2h antes.
-              </div>
-            </div>
-            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-              <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.solicitarPermissaoNotificacao()">🔔 Ativar Notificações</button>
-              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.testarDisparoLembrete2h()">⚡ Testar Lembrete 2h</button>
-            </div>
-          </div>
 
           ${
             canCreate
@@ -2736,22 +2742,47 @@ const AmadeusViews = {
     const canCreate = core.canCreate();
     const db = core.db;
 
+    const totalPessoas = db.pessoas.length;
+    const totalBioAtivas = db.pessoas.filter((p) => p.biometriaCadastrada).length;
+    const totalServicos = db.atividades.length;
+
     return `
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">👥 Cadastro e Gestão de Pessoas & Ponto Biométrico (Agricultura e Pecuária)</div>
-            <div style="font-size:0.8rem; color:var(--slate-500);">
-              Acompanhamento individual de carga horária, vínculo com atividades rurais, relatórios em PDF e validação biométrica.
-            </div>
+      <div class="page-header-clean">
+        <div class="page-header-info">
+          <div class="page-header-title">
+            👥 Equipe &amp; Ponto Biométrico
+            <span class="page-header-badge">Recursos Humanos &amp; Campo</span>
           </div>
+          <div class="page-header-sub">Gestão de colaboradores, acompanhamento de horas trabalhadas, serviços e validação biométrica</div>
+        </div>
+        <div class="page-header-actions">
           ${
             canCreate
               ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalPessoa()">➕ Cadastrar Pessoa</button>`
               : `<span class="status-pill">👁️ Somente Leitura</span>`
           }
         </div>
+      </div>
 
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Colaboradores Cadastrados</div>
+          <div class="kpi-value">${totalPessoas}</div>
+          <div class="kpi-sub">Equipe de campo e pesquisa</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Biometrias Ativas</div>
+          <div class="kpi-value">${totalBioAtivas}</div>
+          <div class="kpi-sub">Ponto biométrico habilitado</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Serviços no Diário</div>
+          <div class="kpi-value">${totalServicos}</div>
+          <div class="kpi-sub">Atividades rurais registradas</div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="table-responsive">
           <table class="data-table">
             <thead>
@@ -4753,11 +4784,16 @@ const AmadeusViews = {
     }
 
     return `
-      <div class="alert-banner alert-info">
-        <div>🔒</div>
-        <div>
-          <strong>Privacidade Auditada e Salvamento Automático de Rascunho:</strong>
-          Suas anotações são <strong>privadas por padrão</strong> e armazenadas com isolamento por autor — <strong>nem mesmo o perfil Administrador tem acesso às notas privadas de outros usuários</strong>. Somente notas marcadas como "Compartilhada" ficam visíveis para a equipe.
+      <div class="page-header-clean">
+        <div class="page-header-info">
+          <div class="page-header-title">
+            📝 Bloco de Anotações Técnicas
+            <span class="page-header-badge">Isolamento Privado</span>
+          </div>
+          <div class="page-header-sub">Notas privadas por autor com salvamento contínuo no aparelho · Somente o que você marcar como compartilhada é visível</div>
+        </div>
+        <div class="page-header-actions">
+          <span class="status-pill" style="font-size:0.78rem;">🔒 ${notas.length} nota(s) visíveis</span>
         </div>
       </div>
 
@@ -5022,6 +5058,13 @@ const AmadeusViews = {
   // ==========================================================================
   // 8. PRODUÇÃO RURAL, ESTOQUE E FINANCEIRO (Seção 14)
   // ==========================================================================
+  pefSubTab: 'todos',
+
+  setPefSubTab(sub) {
+    this.pefSubTab = sub;
+    this.renderMainContent();
+  },
+
   viewProducaoEstoqueFinanceiro() {
     const core = window.AmadeusCore;
     const isAdmin = core.isAdmin();
@@ -5030,31 +5073,71 @@ const AmadeusViews = {
     const receitas = pef.financeiro.filter((f) => f.tipo === 'Receita').reduce((s, f) => s + Number(f.valor), 0);
     const despesas = pef.financeiro.filter((f) => f.tipo === 'Despesa').reduce((s, f) => s + Number(f.valor), 0);
     const saldo = receitas - despesas;
+    const sub = this.pefSubTab || 'todos';
 
     return `
+      <div class="page-header-clean">
+        <div class="page-header-info">
+          <div class="page-header-title">
+            🌾 Produção, Estoque &amp; Balanço Financeiro
+            <span class="page-header-badge">Gestão Integrada</span>
+          </div>
+          <div class="page-header-sub">Monitoramento de safras, inventário de insumos e fluxo de receitas e despesas</div>
+        </div>
+        <div class="page-header-actions">
+          ${
+            canCreate
+              ? `
+            <button class="btn btn-primary" onclick="AmadeusViews.abrirModalProducao()">➕ Produção</button>
+            <button class="btn btn-secondary" onclick="AmadeusViews.abrirModalEstoque()">➕ Insumo</button>
+            <button class="btn btn-secondary" onclick="AmadeusViews.abrirModalFinanceiro()">➕ Lançamento</button>
+          `
+              : `<span class="status-pill">👁️ Leitura</span>`
+          }
+        </div>
+      </div>
+
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Receitas Registradas</div>
           <div class="kpi-value">R$ ${receitas.toFixed(2)}</div>
-          <div class="kpi-sub">Entradas e repasses de projetos</div>
+          <div class="kpi-sub">Entradas e repasses</div>
         </div>
         <div class="kpi-card red">
           <div class="kpi-label">Despesas e Custos</div>
           <div class="kpi-value">R$ ${despesas.toFixed(2)}</div>
-          <div class="kpi-sub">Insumos, manutenção e manejo</div>
+          <div class="kpi-sub">Insumos e manutenção</div>
         </div>
         <div class="kpi-card blue">
           <div class="kpi-label">Saldo Operacional</div>
           <div class="kpi-value">R$ ${saldo.toFixed(2)}</div>
-          <div class="kpi-sub">Balanço financeiro da unidade</div>
+          <div class="kpi-sub">Balanço consolidado</div>
         </div>
         <div class="kpi-card amber">
           <div class="kpi-label">Itens em Estoque</div>
           <div class="kpi-value">${pef.estoque.length} insumos</div>
-          <div class="kpi-sub">${pef.producao.length} safras/culturas ativas</div>
+          <div class="kpi-sub">${pef.producao.length} safras ativas</div>
         </div>
       </div>
 
+      <div class="clean-tabs-nav">
+        <button class="clean-tab ${sub === 'todos' ? 'active' : ''}" onclick="AmadeusViews.setPefSubTab('todos')">
+          📊 Visão Completa
+        </button>
+        <button class="clean-tab ${sub === 'producao' ? 'active' : ''}" onclick="AmadeusViews.setPefSubTab('producao')">
+          🌾 Produção &amp; Safras (${pef.producao.length})
+        </button>
+        <button class="clean-tab ${sub === 'estoque' ? 'active' : ''}" onclick="AmadeusViews.setPefSubTab('estoque')">
+          📦 Estoque (${pef.estoque.length})
+        </button>
+        <button class="clean-tab ${sub === 'financeiro' ? 'active' : ''}" onclick="AmadeusViews.setPefSubTab('financeiro')">
+          💰 Fluxo Financeiro (${pef.financeiro.length})
+        </button>
+      </div>
+
+      ${
+        sub === 'todos' || sub === 'producao'
+          ? `
       <div class="card">
         <div class="card-header">
           <div class="card-title">🌾 Produção Rural e Experimentos de Safra</div>
@@ -5097,8 +5180,17 @@ const AmadeusViews = {
           </table>
         </div>
       </div>
+      `
+          : ''
+      }
 
-      <div class="responsive-grid-2">
+      ${
+        sub === 'todos' || sub === 'estoque' || sub === 'financeiro'
+          ? `
+      <div class="${sub === 'todos' ? 'responsive-grid-2' : ''}">
+        ${
+          sub === 'todos' || sub === 'estoque'
+            ? `
         <div class="card">
           <div class="card-header">
             <div class="card-title">📦 Controle de Estoque de Insumos</div>
@@ -5139,7 +5231,13 @@ const AmadeusViews = {
             </table>
           </div>
         </div>
+        `
+            : ''
+        }
 
+        ${
+          sub === 'todos' || sub === 'financeiro'
+            ? `
         <div class="card">
           <div class="card-header">
             <div class="card-title">💰 Despesas e Receitas Rurais</div>
@@ -5180,7 +5278,13 @@ const AmadeusViews = {
             </table>
           </div>
         </div>
+        `
+            : ''
+        }
       </div>
+      `
+          : ''
+      }
     `;
   },
 
@@ -5388,70 +5492,71 @@ const AmadeusViews = {
   viewRelatorios() {
     const core = window.AmadeusCore;
     return `
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📑 Central de Relatórios e Exportação para Tomada de Decisão</div>
+      <div class="page-header-clean">
+        <div class="page-header-info">
+          <div class="page-header-title">
+            📑 Central de Relatórios &amp; Documentos
+            <span class="page-header-badge">Emissão Oficial</span>
+          </div>
+          <div class="page-header-sub">Relatórios consolidados em PDF com logotipo oficial AMADEUS e planilhas CSV para auditoria e tomada de decisão</div>
         </div>
-        <p style="font-size:0.88rem; color:var(--slate-600); margin-bottom:1.25rem;">
-          Exporte relatórios formatados em PDF (com a logo oficial do AMADEUS) e planilhas CSV consolidando os registros de chuva, carga horária por trabalhador e fichas zootécnicas individuais.
-        </p>
+      </div>
 
-        <div class="schedule-cards-grid">
-          <div class="card" style="margin:0;">
-            <div class="card-title" style="margin-bottom:0.5rem;">🚜 Relatório de Atividades (Diário de Campo)</div>
-            <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
-              Relatório consolidado com todas as ${core.db.atividades.length} atividades, carga horária total (${String(Number(core.db.atividades.reduce((s, a) => s + (Number(a.horasTrabalhadas) || 0), 0).toFixed(1))).replace('.', ',')} h) e tabela de horas por participante.
-            </p>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-              <button class="btn btn-primary" onclick="AmadeusCore.exportarRelatorioAtividadesConsolidadoPDF()">📄 Baixar PDF de Atividades</button>
-            </div>
+      <div class="schedule-cards-grid">
+        <div class="card" style="margin:0;">
+          <div class="card-title" style="margin-bottom:0.5rem;">🚜 Relatório de Atividades (Diário de Campo)</div>
+          <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
+            Relatório consolidado com todas as ${core.db.atividades.length} atividades, carga horária total (${String(Number(core.db.atividades.reduce((s, a) => s + (Number(a.horasTrabalhadas) || 0), 0).toFixed(1))).replace('.', ',')} h) e tabela de horas por participante.
+          </p>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="AmadeusCore.exportarRelatorioAtividadesConsolidadoPDF()">📄 Baixar PDF de Atividades</button>
           </div>
+        </div>
 
-          <div class="card" style="margin:0;">
-            <div class="card-title" style="margin-bottom:0.5rem;">🌧️ Relatórios Pluviométricos (2025 & 2026)</div>
-            <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
-              Inclui síntese mensal, acumulados, dias chuvosos vs. 0 mm, nota técnica da lacuna de início de 2025 e todas as leituras diárias.
-            </p>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-              <button class="btn btn-primary" onclick="AmadeusCore.exportarRelatorioPluviometricoPDF()">📄 Baixar PDF Pluviométrico</button>
-              <button class="btn btn-secondary" onclick="AmadeusCore.exportarCSVPluviometria()">📥 Exportar CSV</button>
-            </div>
+        <div class="card" style="margin:0;">
+          <div class="card-title" style="margin-bottom:0.5rem;">🌧️ Relatórios Pluviométricos (2025 & 2026)</div>
+          <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:1rem;">
+            Inclui síntese mensal, acumulados, dias chuvosos vs. 0 mm, nota técnica da lacuna de início de 2025 e todas as leituras diárias.
+          </p>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="AmadeusCore.exportarRelatorioPluviometricoPDF()">📄 Baixar PDF Pluviométrico</button>
+            <button class="btn btn-secondary" onclick="AmadeusCore.exportarCSVPluviometria()">📥 Exportar CSV</button>
           </div>
+        </div>
 
-          <div class="card" style="margin:0;">
-            <div class="card-title" style="margin-bottom:0.5rem;">🐄 Fichas Individuais de Animais em PDF</div>
-            <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:0.75rem;">
-              Selecione o animal para emitir sua ficha completa com histórico de pesagens e cálculo de GMD:
-            </p>
-            <div style="display:flex; flex-direction:column; gap:0.4rem;">
-              ${core.db.animais
-                .map(
-                  (a) => `
-                <button class="btn btn-secondary" style="justify-content:space-between;" onclick="AmadeusCore.exportarFichaAnimalPDF('${a.id}')">
-                  <span>🏷️ ${a.brinco} — ${a.nome} (${a.especie})</span>
-                  <span>📄 Gerar PDF</span>
-                </button>`
-                )
-                .join('')}
-            </div>
+        <div class="card" style="margin:0;">
+          <div class="card-title" style="margin-bottom:0.5rem;">🐄 Fichas Individuais de Animais em PDF</div>
+          <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:0.75rem;">
+            Selecione o animal para emitir sua ficha completa com histórico de pesagens e cálculo de GMD:
+          </p>
+          <div style="display:flex; flex-direction:column; gap:0.4rem;">
+            ${core.db.animais
+              .map(
+                (a) => `
+              <button class="btn btn-secondary" style="justify-content:space-between;" onclick="AmadeusCore.exportarFichaAnimalPDF('${a.id}')">
+                <span>🏷️ ${a.brinco} — ${a.nome} (${a.especie})</span>
+                <span>📄 Gerar PDF</span>
+              </button>`
+              )
+              .join('')}
           </div>
+        </div>
 
-          <div class="card" style="margin:0;">
-            <div class="card-title" style="margin-bottom:0.5rem;">👥 Relatórios de Carga Horária por Trabalhador</div>
-            <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:0.75rem;">
-              Emita o demonstrativo individual de horas, atividades executadas e status biométrico:
-            </p>
-            <div style="display:flex; flex-direction:column; gap:0.4rem; max-height:190px; overflow-y:auto;">
-              ${core.db.pessoas
-                .map(
-                  (p) => `
-                <button class="btn btn-secondary btn-sm" style="justify-content:space-between;" onclick="AmadeusCore.exportarRelatorioPessoaPDF('${p.id}')">
-                  <span>👤 ${p.nome}</span>
-                  <span>📄 PDF Horas</span>
-                </button>`
-                )
-                .join('')}
-            </div>
+        <div class="card" style="margin:0;">
+          <div class="card-title" style="margin-bottom:0.5rem;">👥 Relatórios de Carga Horária por Trabalhador</div>
+          <p style="font-size:0.83rem; color:var(--slate-600); margin-bottom:0.75rem;">
+            Emita o demonstrativo individual de horas, atividades executadas e status biométrico:
+          </p>
+          <div style="display:flex; flex-direction:column; gap:0.4rem; max-height:190px; overflow-y:auto;">
+            ${core.db.pessoas
+              .map(
+                (p) => `
+              <button class="btn btn-secondary btn-sm" style="justify-content:space-between;" onclick="AmadeusCore.exportarRelatorioPessoaPDF('${p.id}')">
+                <span>👤 ${p.nome}</span>
+                <span>📄 PDF Horas</span>
+              </button>`
+              )
+              .join('')}
           </div>
         </div>
       </div>
@@ -5468,27 +5573,26 @@ const AmadeusViews = {
     const pubs = core.db.publicacoesPortal.filter((p) => isAdmin || p.status === 'Publicado');
 
     return `
-      <div class="portal-hero">
-        <div style="display:flex; align-items:center; gap:1.35rem; flex-wrap:wrap;">
-          <img src="${cfg.logoUrl || 'assets/logo-amadeus.png'}" alt="Logo AMADEUS" onerror="this.src='assets/logo-amadeus.png'" style="width:110px; height:110px; border-radius:18px; background:#ffffff; padding:6px; object-fit:contain; box-shadow:0 4px 14px rgba(0,0,0,0.25);" />
+      <div class="page-header-clean" style="padding:1.35rem 1.5rem; background:linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);">
+        <div style="display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap;">
+          <img src="${cfg.logoUrl || 'assets/logo-amadeus.png'}" alt="Logo AMADEUS" onerror="this.src='assets/logo-amadeus.png'" style="width:72px; height:72px; border-radius:14px; background:#ffffff; padding:4px; object-fit:contain; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.06);" />
           <div>
-            <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--green-200); font-weight:700;">
-              Portal Institucional & Vitrine Científica
+            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.2rem;">
+              <span class="page-header-badge">Vitrine Científica &amp; Institucional</span>
             </div>
-            <h1 style="font-size:2rem; font-weight:900; margin:0.15rem 0;">${cfg.nomeSistema}</h1>
-            <div style="font-size:1rem; color:#e2e8f0; max-width:680px;">${cfg.subtitulo}</div>
-            <div style="font-size:0.82rem; color:var(--green-200); margin-top:0.25rem;">Administração, Manejo e Apoio à Decisão em Empreendimentos e Unidades Rurais Sustentáveis</div>
+            <div style="font-size:1.45rem; font-weight:900; color:var(--slate-900);">${cfg.nomeSistema}</div>
+            <div style="font-size:0.86rem; color:var(--slate-600); max-width:680px;">${cfg.subtitulo} · IF Baiano</div>
           </div>
         </div>
         ${
           isAdmin
             ? `
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-amber" onclick="AmadeusViews.abrirModalEditarPortal()">✏️ Editar Identidade e Textos</button>
-            <button class="btn btn-secondary" onclick="AmadeusViews.abrirModalPublicacao()">➕ Nova Publicação / Notícia</button>
+            <button class="btn btn-secondary" onclick="AmadeusViews.abrirModalEditarPortal()">✏️ Editar Portal</button>
+            <button class="btn btn-primary" onclick="AmadeusViews.abrirModalPublicacao()">➕ Nova Publicação</button>
           </div>
         `
-            : `<span class="status-pill">🔒 Edição restrita a Administradores</span>`
+            : `<span class="status-pill">👁️ Modo Público</span>`
         }
       </div>
 
@@ -5762,8 +5866,26 @@ const AmadeusViews = {
     const pendentes = db.usuarios.filter((u) => u.statusAcesso === 'pendente');
 
     return `
+      <div class="page-header-clean">
+        <div class="page-header-info">
+          <div class="page-header-title">
+            ⚙️ Painel de Administração &amp; Nuvem
+            <span class="page-header-badge">Controle Master</span>
+          </div>
+          <div class="page-header-sub">Aprovação de novos acessos, permissões de usuários, integração Firebase e backup versionado no GitHub</div>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-secondary" onclick="AmadeusCloud.pullFromFirebase(false)">
+            🔄 Sincronizar Nuvem
+          </button>
+          <button class="btn btn-primary" onclick="AmadeusViews.abrirModalUsuario()">
+            ➕ Novo Usuário
+          </button>
+        </div>
+      </div>
+
       <!-- Card Prioritário: Aprovação de Solicitações de Acesso (Cadastro via Link) -->
-      <div class="card" style="border-top:5px solid ${pendentes.length > 0 ? '#f59e0b' : '#166534'};">
+      <div class="card" style="border-top:4px solid ${pendentes.length > 0 ? '#f59e0b' : '#166534'};">
         <div class="card-header">
           <div>
             <div class="card-title">🔔 Solicitações de Acesso Pendentes (${pendentes.length})</div>
