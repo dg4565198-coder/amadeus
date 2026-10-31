@@ -640,7 +640,12 @@ const AmadeusViews = {
           <div style="display:flex; flex-direction:column; gap:0.65rem;">
             ${
               db.agendamentos.length === 0
-                ? `<div style="text-align:center; padding:1.5rem; color:var(--slate-500); font-size:0.85rem;">Nenhum agendamento pendente.</div>`
+                ? `<div class="empty-state-clean" style="padding:1.4rem 1rem; margin:0.25rem 0;">
+                    <div class="empty-state-icon" style="width:42px; height:42px; font-size:1.2rem; margin-bottom:0.4rem; background:#ecfdf5; color:#15803d;">✅</div>
+                    <div class="empty-state-title" style="font-size:0.88rem;">Tudo em dia no campo</div>
+                    <div class="empty-state-sub" style="font-size:0.78rem; margin-bottom:0.6rem;">Nenhum manejo ou compromisso pendente no momento.</div>
+                    <button class="btn btn-secondary btn-sm" onclick="AmadeusViews.navegar('agendamento')">➕ Novo Agendamento</button>
+                  </div>`
                 : db.agendamentos
                     .slice(0, 3)
                     .map(
