@@ -112,7 +112,72 @@ body {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex-wrap: wrap;
+  position: relative;
+}
+
+.header-profile-btn {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 0.32rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+.header-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.header-user-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 275px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.22);
+  padding: 0.65rem;
+  z-index: 5000;
+  animation: popoverFadeUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes popoverFadeUp {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.popover-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.14s ease;
+}
+.popover-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.popover-item.danger {
+  color: #dc2626;
+}
+.popover-item.danger:hover {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .status-pill {
@@ -939,11 +1004,12 @@ body.force-mobile-view .mobile-bottom-nav {
     box-shadow: none;
   }
   body:not(.force-desktop-view) .app-header {
-    padding: 0.55rem 0.65rem;
-    gap: 0.45rem;
-    flex-wrap: wrap;
+    padding: 0.55rem 0.85rem;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
     width: 100%;
     max-width: 100%;
+    justify-content: space-between;
   }
   body:not(.force-desktop-view) .brand-logo {
     width: 38px;
@@ -957,11 +1023,11 @@ body.force-mobile-view .mobile-bottom-nav {
     display: none;
   }
   body:not(.force-desktop-view) .header-actions {
-    width: 100%;
-    justify-content: space-between;
-    gap: 0.35rem;
-    padding-top: 0.35rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    width: auto;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    padding-top: 0;
+    border-top: none;
   }
   body:not(.force-desktop-view) .app-layout {
     flex-direction: column;
@@ -1080,9 +1146,10 @@ body.force-mobile-view .mobile-bottom-nav {
 
 /* Quando o usuário clica em "📱 Celular" mesmo estando no Notebook */
 body.force-mobile-view .app-header {
-  padding: 0.55rem 0.65rem;
-  gap: 0.45rem;
-  flex-wrap: wrap;
+  padding: 0.55rem 0.85rem;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  justify-content: space-between;
 }
 body.force-mobile-view .brand-logo {
   width: 38px;
@@ -1096,11 +1163,11 @@ body.force-mobile-view .brand-subtitle {
   display: none;
 }
 body.force-mobile-view .header-actions {
-  width: 100%;
-  justify-content: space-between;
-  gap: 0.35rem;
-  padding-top: 0.35rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  width: auto;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  padding-top: 0;
+  border-top: none;
 }
 body.force-mobile-view .app-layout {
   flex-direction: column;
