@@ -1245,6 +1245,133 @@ body.force-mobile-view .sipa-gallery-grid {
   flex: 1;
 }
 
+/* ==========================================================================
+   PADRÃO CLEAN AGRO-TECH (PILOTO DE REDESENHO LIMPO)
+   ========================================================================== */
+.clean-tabs-nav {
+  display: flex;
+  gap: 0.35rem;
+  background: #f1f5f9;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.clean-tabs-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.clean-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+  user-select: none;
+}
+.clean-tab:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.7);
+}
+.clean-tab.active {
+  background: #ffffff;
+  color: #15803d;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.page-header-clean {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.page-header-clean .page-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+  line-height: 1.25;
+}
+.page-header-clean .page-subtitle {
+  font-size: 0.83rem;
+  color: var(--slate-500);
+}
+
+.quick-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+.shortcut-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  text-decoration: none;
+}
+.shortcut-card:hover {
+  border-color: #86efac;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px -3px rgba(22, 101, 52, 0.1);
+  background: #fdfdfd;
+}
+.shortcut-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+.shortcut-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.shortcut-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--slate-800);
+}
+.shortcut-desc {
+  font-size: 0.74rem;
+  color: var(--slate-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media print {
   .app-header, .sidebar, .mobile-bottom-nav, .no-print, .toast-container {
     display: none !important;
