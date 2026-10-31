@@ -281,54 +281,92 @@ const AmadeusViews = {
     const fbOn = window.AmadeusCloud && window.AmadeusCloud.config.firebase.enabled;
     const pendentes = core.db.usuarios.filter((x) => x.statusAcesso === 'pendente').length;
     const isMobActive = this.viewMode === 'mobile' || (this.viewMode === 'auto' && window.innerWidth <= 900);
+    const isStandalone = (typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true));
 
     el.innerHTML = `
-      <div class="brand-area" onclick="AmadeusViews.navegar('dashboard')">
+      <div class="brand-area" onclick="AmadeusViews.navegar('dashboard')" title="Ir para o Painel Geral">
         <img src="${cfg.logoUrl || 'assets/logo-amadeus.png'}" alt="Logo AMADEUS" class="brand-logo" onerror="this.src='assets/logo-amadeus.png'" />
-        <div>
-          <div class="brand-title">
+        <div style="display:flex; flex-direction:column; min-width:0;">
+          <div class="brand-title" style="display:flex; align-items:center; gap:0.4rem; white-space:nowrap;">
             ${cfg.nomeSistema}
-            <span class="role-badge ${core.isAdmin() ? 'role-admin' : 'role-comum'}">
+            <span class="role-badge ${core.isAdmin() ? 'role-admin' : 'role-comum'}" style="font-size:0.68rem; padding:0.12rem 0.45rem;">
               ${core.getRoleLabel(u.perfil)}
             </span>
+            <span class="status-dot ${core.isOnline ? '' : 'offline'}" style="width:8px; height:8px;" title="${core.isOnline ? 'Online' + (fbOn ? ' (Firebase)' : '') : 'Modo Offline'}"></span>
           </div>
           <div class="brand-subtitle">${cfg.subtitulo || cfg.nomeExpandido}</div>
         </div>
       </div>
+
       <div class="header-actions">
-        <div class="view-mode-switcher" title="Alternar entre visualização Notebook e Celular">
-          <button type="button" class="view-mode-btn ${!isMobActive ? 'active' : ''}" onclick="AmadeusViews.alterarModoTela('desktop')">
-            💻 Notebook
-          </button>
-          <button type="button" class="view-mode-btn ${isMobActive ? 'active' : ''}" onclick="AmadeusViews.alterarModoTela('mobile')">
-            📱 Celular
-          </button>
-        </div>
-        <span class="status-pill" title="Status de Conexão PWA e Nuvem">
-          <span class="status-dot ${core.isOnline ? '' : 'offline'}"></span>
-          ${core.isOnline ? 'Online' : 'Offline'}
-          ${fbOn ? ' · 🔥 Firebase' : ''}
-        </span>
         ${
           core.isAdmin() && pendentes > 0
             ? `
-          <button class="btn btn-sm btn-amber" onclick="AmadeusViews.navegar('admin')" title="Solicitações de acesso aguardando sua aprovação">
-            🔔 ${pendentes} Pendente(s)
+          <button class="btn btn-sm btn-amber" onclick="AmadeusViews.navegar('admin')" title="Solicitações de acesso pendentes" style="padding:0.25rem 0.55rem; font-size:0.75rem;">
+            🔔 ${pendentes}
           </button>
         `
             : ''
         }
-        <button class="btn btn-sm btn-secondary" onclick="AmadeusCore.instalarPWA()" title="Instalar aplicativo no celular ou computador">
-          📲 Instalar App
+
+        <button type="button" class="header-profile-btn" id="header-profile-toggle" onclick="AmadeusViews.toggleUserMenu(event)" title="Opções de Usuário e Sistema">
+          <span>👤 ${u.nome.split(' ')[0]}</span>
+          <span style="font-size:0.65rem; opacity:0.85;">▼</span>
         </button>
-        <span style="font-size:0.78rem; font-weight:700; color:#fff; background:rgba(255,255,255,0.14); padding:0.28rem 0.6rem; border-radius:8px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          👤 ${u.nome.split(' ')[0]}
-        </span>
-        <button class="btn btn-sm btn-danger" onclick="AmadeusCore.logout()" title="Encerrar sessão e voltar para a tela de login">
-          🚪 Sair
-        </button>
+
+        <!-- Menu Flutuante de Perfil (PopOver) -->
+        <div class="header-user-popover" id="header-user-popover" style="display:none;" onclick="event.stopPropagation()">
+          <div style="padding:0.35rem 0.45rem 0.65rem; border-bottom:1px solid #e2e8f0; margin-bottom:0.45rem;">
+            <div style="font-size:0.88rem; font-weight:800; color:#0f172a; line-height:1.2;">${u.nome}</div>
+            <div style="font-size:0.72rem; color:#64748b; margin-top:0.25rem;">
+              <span class="role-badge ${core.isAdmin() ? 'role-admin' : 'role-comum'}" style="font-size:0.65rem; padding:0.1rem 0.4rem;">
+                ${core.getRoleLabel(u.perfil)}
+              </span>
+              ${u.cargo ? ` · ${u.cargo}` : ''}
+            </div>
+            <div style="font-size:0.7rem; color:${core.isOnline ? '#15803d' : '#94a3b8'}; margin-top:0.35rem; display:flex; align-items:center; gap:0.3rem;">
+              <span class="status-dot ${core.isOnline ? '' : 'offline'}"></span>
+              ${core.isOnline ? '🟢 Online' + (fbOn ? ' · Nuvem Firebase Ativa' : ' · Armazenamento Local') : '⚪ Modo Offline'}
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.2rem;">
+            <button type="button" class="popover-item" onclick="AmadeusViews.alterarModoTela('${isMobActive ? 'desktop' : 'mobile'}'); AmadeusViews.fecharUserMenu();">
+              ${isMobActive ? '💻 Alternar para Modo Notebook' : '📱 Alternar para Modo Celular'}
+            </button>
+
+            ${
+              !isStandalone
+                ? `
+              <button type="button" class="popover-item" onclick="AmadeusCore.instalarPWA(); AmadeusViews.fecharUserMenu();">
+                📲 Instalar no Celular / Computador
+              </button>
+            `
+                : ''
+            }
+
+            <div style="height:1px; background:#e2e8f0; margin:0.3rem 0;"></div>
+
+            <button type="button" class="popover-item danger" onclick="AmadeusViews.fecharUserMenu(); AmadeusCore.logout();">
+              🚪 Encerrar Sessão
+            </button>
+          </div>
+        </div>
       </div>
     `;
+  },
+
+  toggleUserMenu(event) {
+    if (event) event.stopPropagation();
+    const pop = document.getElementById('header-user-popover');
+    if (!pop) return;
+    const isVis = pop.style.display !== 'none';
+    pop.style.display = isVis ? 'none' : 'block';
+  },
+
+  fecharUserMenu() {
+    const pop = document.getElementById('header-user-popover');
+    if (pop) pop.style.display = 'none';
   },
 
   getMenuModules() {
