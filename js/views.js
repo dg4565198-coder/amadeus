@@ -572,7 +572,7 @@ const AmadeusViews = {
 
         <div class="kpi-card" onclick="AmadeusViews.navegar('animais')" style="cursor:pointer;" title="Ver rebanho e lotes">
           <div class="kpi-label">🐄 GMD Médio Rebanho</div>
-          <div class="kpi-value" style="color:#15803d;">+${gmdMedioRebanho.toFixed(3)} kg/d</div>
+          <div class="kpi-value" style="color:${gmdMedioRebanho >= 0 ? '#15803d' : '#d97706'};">${gmdMedioRebanho >= 0 ? '+' : ''}${gmdMedioRebanho.toFixed(3)} kg/d</div>
           <div class="kpi-sub">${db.animais.length} animais · ${db.lotesPasto?.length || 2} lotes monitorados</div>
         </div>
 
@@ -3165,7 +3165,7 @@ const AmadeusViews = {
         </div>
         <div class="kpi-card blue" onclick="AmadeusViews.setAnimaisSubTab('rebanho')" style="cursor:pointer;">
           <div class="kpi-label">GMD Médio</div>
-          <div class="kpi-value" style="color:#0284c7;">+${gmdMedio.toFixed(3)} kg/d</div>
+          <div class="kpi-value" style="color:${gmdMedio >= 0 ? '#0284c7' : '#d97706'};">${gmdMedio >= 0 ? '+' : ''}${gmdMedio.toFixed(3)} kg/d</div>
           <div class="kpi-sub">Ganho de peso consolidado</div>
         </div>
         <div class="kpi-card amber" onclick="AmadeusViews.setAnimaisSubTab('sanidade')" style="cursor:pointer;">
