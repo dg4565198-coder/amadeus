@@ -4073,7 +4073,7 @@ const AmadeusViews = {
             <tbody>
               ${
                 checkSanidade.length === 0
-                  ? `<tr><td colspan="9" style="text-align:center; padding:1.8rem; color:var(--slate-500);">Nenhum checklist sanitário cadastrado ainda. Clique em "➕ Novo Checklist Sanitário" para iniciar.</td></tr>`
+                  ? `<tr><td colspan="9" style="padding:1.5rem 0; border:none;"><div class="empty-state-clean" style="margin:0.5rem auto; max-width:440px;"><div class="empty-state-icon">🩺</div><div class="empty-state-title">Nenhum checklist sanitário cadastrado</div><div class="empty-state-sub">Acompanhe rotineiramente a saúde dos lotes, qualidade da água e cochos minerais.</div>${canCreate ? `<button class="btn btn-primary btn-sm" onclick="AmadeusViews.abrirModalChecklistSanidade()">➕ Novo Checklist Sanitário</button>` : ''}</div></td></tr>`
                   : checkSanidade
                       .map((c) => {
                         const badgeCor =
@@ -6465,7 +6465,7 @@ const AmadeusViews = {
               <tbody>
                 ${
                   plantios.length === 0
-                    ? `<tr><td colspan="9" style="text-align:center; padding:1.5rem; color:var(--slate-500);">Nenhum plantio cadastrado ainda. Clique em "➕ Cadastrar Plantio" para iniciar.</td></tr>`
+                    ? `<tr><td colspan="9" style="padding:1.5rem 0; border:none;"><div class="empty-state-clean" style="margin:0.5rem auto; max-width:440px;"><div class="empty-state-icon">🌾</div><div class="empty-state-title">Nenhum plantio registrado ainda</div><div class="empty-state-sub">Cadastre as áreas de semeadura direta (SPD) com culturas solteiras ou consorciadas.</div>${canCreate ? `<button class="btn btn-primary btn-sm" onclick="AmadeusViews.abrirModalPlantioSipa()">➕ Cadastrar Primeiro Plantio</button>` : ''}</div></td></tr>`
                     : plantios
                         .map(
                           (p) => `
@@ -6535,7 +6535,7 @@ const AmadeusViews = {
               <tbody>
                 ${
                   avaliacoes.length === 0
-                    ? `<tr><td colspan="9" style="text-align:center; padding:1.5rem; color:var(--slate-500);">Nenhuma avaliação registrada ainda.</td></tr>`
+                    ? `<tr><td colspan="9" style="padding:1.5rem 0; border:none;"><div class="empty-state-clean" style="margin:0.5rem auto; max-width:440px;"><div class="empty-state-icon">🍂</div><div class="empty-state-title">Nenhuma avaliação técnica registrada</div><div class="empty-state-sub">Monitore a biomassa residual (t/ha), cobertura vegetal do solo e altura do dossel.</div>${canCreate ? `<button class="btn btn-primary btn-sm" onclick="AmadeusViews.abrirModalAvaliacaoSipa()">➕ Nova Avaliação de Campo</button>` : ''}</div></td></tr>`
                     : avaliacoes
                         .map(
                           (a) => `
@@ -8923,9 +8923,9 @@ const AmadeusViews = {
     root.innerHTML = `
       <div class="modal-backdrop" onclick="if(event.target===this) AmadeusViews.fecharModal()">
         <div class="modal-card">
-          <div class="card-header" style="border-bottom:1px solid var(--slate-200); padding-bottom:0.75rem;">
-            <div class="card-title">${titulo}</div>
-            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.fecharModal()">✖</button>
+          <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:0.85rem; margin-bottom:1.15rem;">
+            <div class="card-title" style="font-size:1.15rem; font-weight:800; color:var(--slate-900);">${titulo}</div>
+            <button class="modal-close-btn" onclick="AmadeusViews.fecharModal()" title="Fechar janela">✕</button>
           </div>
           <div>${htmlCorpo}</div>
         </div>
