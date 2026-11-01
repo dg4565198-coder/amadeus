@@ -1526,6 +1526,8 @@ body.force-mobile-view .sipa-gallery-grid {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
 .empty-state-clean {
   padding: 2.25rem 1.5rem;
   text-align: center;
@@ -1601,13 +1603,15 @@ body.force-mobile-view .sipa-gallery-grid {
 }
 .gmd-search-bar-wrap {
   display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: stretch;
   margin: 0.85rem 0 1.25rem 0;
+  max-width: 700px;
+  width: 100%;
 }
 .gmd-search-input-box {
-  flex: 1 1 320px;
+  flex: 1;
+  min-width: 0;
   position: relative;
   display: flex;
   align-items: center;
