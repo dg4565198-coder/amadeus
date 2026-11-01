@@ -787,6 +787,48 @@ table.data-table tbody tr:last-child td {
   transform: rotate(90deg);
 }
 
+/* Cabeçalho Limpo e Perfeitamente Centralizado do Modal */
+.modal-header-clean {
+  display: grid;
+  grid-template-columns: 32px 1fr 32px;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.85rem;
+  margin-bottom: 1.15rem;
+  width: 100%;
+}
+
+.modal-header-title {
+  grid-column: 2;
+  text-align: center;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  line-height: 1.3;
+  margin: 0;
+  padding: 0 0.4rem;
+}
+
+.modal-header-clean .modal-close-btn {
+  grid-column: 3;
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .modal-card {
+    padding: 1.15rem 1rem;
+    border-radius: 16px;
+    max-height: 88vh;
+  }
+  .modal-header-clean {
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.95rem;
+  }
+  .modal-header-title {
+    font-size: 1.05rem;
+  }
+}
+
 .modal-card.modal-card-lg {
   max-width: 820px;
 }
@@ -1703,7 +1745,7 @@ body.force-mobile-view .sipa-gallery-grid {
   gap: 0.65rem;
   align-items: stretch;
   margin: 0.85rem 0 1.25rem 0;
-  max-width: 700px;
+  max-width: 720px;
   width: 100%;
 }
 .gmd-search-input-box {
@@ -1712,6 +1754,61 @@ body.force-mobile-view .sipa-gallery-grid {
   position: relative;
   display: flex;
   align-items: center;
+}
+.gmd-search-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+.gmd-btn-search,
+.gmd-btn-filter {
+  white-space: nowrap;
+  padding: 0.72rem 1.15rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 640px) {
+  .gmd-search-bar-wrap {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .gmd-search-input-box {
+    width: 100%;
+  }
+  .gmd-search-actions {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .gmd-search-actions .btn {
+    flex: 1;
+    min-width: 0;
+    padding: 0.68rem 0.5rem;
+    font-size: 0.85rem;
+    justify-content: center;
+  }
+}
+body.force-mobile-view .gmd-search-bar-wrap {
+  flex-direction: column;
+  gap: 0.55rem;
+}
+body.force-mobile-view .gmd-search-input-box {
+  width: 100%;
+}
+body.force-mobile-view .gmd-search-actions {
+  width: 100%;
+  display: flex;
+  gap: 0.5rem;
+}
+body.force-mobile-view .gmd-search-actions .btn {
+  flex: 1;
+  min-width: 0;
+  padding: 0.68rem 0.5rem;
+  font-size: 0.85rem;
+  justify-content: center;
 }
 .gmd-search-icon {
   position: absolute;
