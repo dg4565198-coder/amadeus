@@ -578,11 +578,9 @@ const AmadeusViews = {
       }
 
       <!-- Cabeçalho Institucional Centralizado -->
-      <div class="page-header-clean" style="justify-content:center; text-align:center; padding:1.35rem 1.5rem;">
-        <div style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem;">
-          <div style="font-size:1.65rem; font-weight:800; color:#15803d; letter-spacing:-0.02em; line-height:1.2;">
-            Amadeus
-          </div>
+      <div class="page-header-clean" style="justify-content:center; text-align:center; padding:1.25rem 1.5rem;">
+        <div style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.45rem;">
+          <img src="assets/amadeus-logo-banner.png?v=32" alt="AMADEUS" style="height:56px; width:auto; max-width:240px; object-fit:contain; display:block;" />
           <div style="font-size:0.95rem; color:#475569; font-weight:500; line-height:1.4;">
             Ambiente de Aprendizado e Desenvolvimento em SIPA na Bahia · IF Baiano
           </div>
