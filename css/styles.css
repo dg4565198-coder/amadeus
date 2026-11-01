@@ -1327,15 +1327,58 @@ body.force-mobile-view .calc-box {
 }
 
 .sipa-map-container {
-  height: 440px;
+  height: 480px;
   width: 100%;
   position: relative;
   z-index: 1;
 }
 
+/* Barra de Telemetria do Mapa */
+.map-telemetry-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.map-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.32rem 0.65rem;
+  font-size: 0.77rem;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.map-pill .pill-icon {
+  font-size: 0.85rem;
+}
+
+.map-pill .pill-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.map-pill .pill-value {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.map-pill .pill-sub {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
 @media (max-width: 768px) {
   .sipa-map-container {
-    height: 330px;
+    height: 350px;
   }
 }
 
