@@ -1564,6 +1564,301 @@ body.force-mobile-view .sipa-gallery-grid {
   margin-bottom: 0.85rem;
 }
 
+/* ========================================================
+   GMD PRO DASHBOARD & CONTROL CENTER
+   ======================================================== */
+.gmd-formula-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--slate-100);
+  color: var(--slate-700);
+  border: 1px solid var(--slate-300);
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.28rem 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 0.35rem;
+}
+.gmd-formula-badge:hover {
+  background: var(--slate-200);
+  color: var(--slate-900);
+  border-color: var(--slate-400);
+}
+
+.gmd-control-panel {
+  background: #f8fafc;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: 0.95rem 1.1rem;
+  margin-bottom: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.gmd-control-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.gmd-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1 1 290px;
+  min-width: 0;
+}
+
+.gmd-select-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--slate-500);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gmd-select {
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--slate-800);
+  background: #ffffff;
+  border: 1.5px solid var(--slate-300);
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+.gmd-select:focus {
+  border-color: var(--green-600);
+  box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.12);
+}
+
+.gmd-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.gmd-chips-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.2rem 0.1rem 0.4rem 0.1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.gmd-chips-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+.gmd-chips-scroll::-webkit-scrollbar-thumb {
+  background: var(--slate-300);
+  border-radius: 4px;
+}
+
+.gmd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.85rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid var(--slate-300);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--slate-700);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+.gmd-chip:hover {
+  border-color: var(--green-600);
+  color: var(--green-800);
+  background: #f0fdf4;
+}
+.gmd-chip.active {
+  background: var(--green-800);
+  color: #ffffff;
+  border-color: var(--green-800);
+  box-shadow: 0 2px 6px rgba(22, 101, 52, 0.28);
+}
+.gmd-chip-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.12rem 0.42rem;
+  border-radius: 6px;
+  line-height: 1.2;
+}
+.gmd-chip-tag.positive {
+  background: #dcfce7;
+  color: #15803d;
+}
+.gmd-chip-tag.negative {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.gmd-chip-tag.neutral {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.gmd-chip.active .gmd-chip-tag {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+/* Animal Hero Card */
+.gmd-hero-card {
+  background: #ffffff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+  border-left: 5px solid var(--green-700);
+}
+.gmd-hero-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.gmd-hero-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  flex-shrink: 0;
+}
+.gmd-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.gmd-hero-title {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.gmd-hero-tag {
+  background: var(--slate-800);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.52rem;
+  border-radius: 6px;
+  letter-spacing: 0.03em;
+}
+.gmd-hero-meta {
+  font-size: 0.8rem;
+  color: var(--slate-600);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.gmd-hero-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.gmd-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.gmd-badge-pill.positive {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.gmd-badge-pill.negative {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+.gmd-badge-pill.neutral {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-outline-secondary {
+  background: #ffffff;
+  color: var(--slate-700);
+  border: 1px solid var(--slate-300);
+}
+.btn-outline-secondary:hover {
+  background: var(--slate-100);
+  color: var(--slate-900);
+  border-color: var(--slate-400);
+}
+
+.btn-outline-danger {
+  background: #ffffff;
+  color: var(--red-600);
+  border: 1px solid #fecaca;
+}
+.btn-outline-danger:hover {
+  background: var(--red-50);
+  color: var(--red-700);
+  border-color: var(--red-300);
+}
+
+@media (max-width: 768px) {
+  .gmd-control-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gmd-actions-group {
+    justify-content: stretch;
+  }
+  .gmd-actions-group .btn {
+    flex: 1 1 auto;
+    font-size: 0.78rem;
+    padding: 0.42rem 0.5rem;
+  }
+  .gmd-hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .gmd-hero-status {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 @media print {
   .app-header, .sidebar, .mobile-bottom-nav, .no-print, .toast-container {
     display: none !important;
