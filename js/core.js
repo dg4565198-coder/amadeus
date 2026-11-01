@@ -30,7 +30,7 @@ const AmadeusCore = {
   // Filtros de Atividades e Notas
   atvFilters: { busca: '', categoria: 'todas', responsavel: 'todos' },
   noteFilters: { busca: '', categoria: 'todas', escopo: 'minhas_e_compartilhadas' },
-  animalSelecionadoId: 'ani-01',
+  animalSelecionadoId: null,
 
   async init() {
     this.loadDatabase();
