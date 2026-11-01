@@ -3149,7 +3149,7 @@ const AmadeusViews = {
     const pastagens = core.db.pastagens || [];
     const sub = this.animaisSubTab || 'rebanho';
 
-    const selecionado = animais.find((a) => a.id === core.animalSelecionadoId) || animais[0];
+    const selecionado = core.animalSelecionadoId ? animais.find((a) => a.id === core.animalSelecionadoId) : null;
     const m = selecionado ? core.calcularMetricasAnimal(selecionado) : null;
     const isFullscreen = core.chartFullscreenId === 'gmd-chart';
 
@@ -3283,10 +3283,330 @@ const AmadeusViews = {
     document.getElementById('modal-root').innerHTML = modal;
   },
 
+  buscaAnimalTermo: '',
+  gmdChartMode: 'spline', // 'spline' | 'bars'
+
+  aoDigitarBuscaAnimal(valor) {
+    this.buscaAnimalTermo = valor;
+  },
+
+  executarBuscaAnimal() {
+    const input = document.getElementById('gmd-busca-input');
+    if (input) {
+      this.buscaAnimalTermo = input.value.trim();
+    }
+    this.renderMainContent();
+  },
+
+  limparBuscaAnimal() {
+    this.buscaAnimalTermo = '';
+    this.renderMainContent();
+  },
+
+  selecionarAnimalParaGrafico(id) {
+    window.AmadeusCore.animalSelecionadoId = id;
+    this.renderMainContent();
+    setTimeout(() => {
+      const el = document.getElementById('gmd-telemetry-stage');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  },
+
+  desselecionarAnimalGMD() {
+    window.AmadeusCore.animalSelecionadoId = null;
+    this.renderMainContent();
+  },
+
+  setGmdChartMode(mode) {
+    this.gmdChartMode = mode;
+    this.renderMainContent();
+  },
+
+  inspecionarPontoGMD(idx, data, peso, ganho, gmd, obs) {
+    const elData = document.getElementById('hud-gmd-data');
+    const elPeso = document.getElementById('hud-gmd-peso');
+    const elGanho = document.getElementById('hud-gmd-ganho');
+    const elGmd = document.getElementById('hud-gmd-taxa');
+    const elObs = document.getElementById('hud-gmd-obs');
+    if (elData) elData.innerText = data;
+    if (elPeso) elPeso.innerText = peso + ' kg';
+    if (elGanho) elGanho.innerText = ganho;
+    if (elGmd) elGmd.innerText = gmd;
+    if (elObs) elObs.innerText = obs || 'Pesagem regular sem observações';
+  },
+
+  renderGraficoZootecnicoAvancado(selecionado, m, isFullscreen) {
+    const core = window.AmadeusCore;
+    const formatGmd = (v) => (v > 0 ? `+${v.toFixed(3)}` : v.toFixed(3));
+    const formatKg = (v) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1));
+
+    const historico = m.historicoDetalhado || [];
+    const mode = this.gmdChartMode || 'spline';
+
+    if (historico.length === 0) {
+      return `
+        <div class="gmd-tech-stage" id="gmd-telemetry-stage">
+          <div style="text-align:center; padding:2.5rem 1rem; color:#94a3b8;">
+            <div style="font-size:2.2rem; margin-bottom:0.5rem;">⚖️</div>
+            <div style="font-size:1.05rem; font-weight:700; color:#fff;">Nenhuma pesagem cadastrada</div>
+            <p style="font-size:0.85rem; margin-top:0.35rem; color:#94a3b8;">Registre a primeira pesagem corporal para inicializar a telemetria deste animal.</p>
+            <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPesagem('${selecionado.id}')" style="margin-top:0.9rem;">
+              ⚖️ Registrar 1ª Pesagem
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    const lastP = historico[historico.length - 1];
+
+    // Dimensões SVG Responsivas
+    const svgW = 860;
+    const svgH = 320;
+    const padTop = 45;
+    const padBottom = 52;
+    const padLeft = 65;
+    const padRight = 85;
+    const plotW = svgW - padLeft - padRight;
+    const plotH = svgH - padTop - padBottom;
+    const baseY = padTop + plotH;
+
+    // Escala de Pesos (kg)
+    const pesos = historico.map((h) => h.peso);
+    let minP = Math.floor(Math.min(...pesos) * 0.96);
+    let maxP = Math.ceil(Math.max(...pesos) * 1.04);
+    if (maxP <= minP) maxP = minP + 20;
+    const rangeP = maxP - minP;
+
+    // Mapeamento dos pontos
+    const n = historico.length;
+    const availW = n > 1 ? plotW - 75 : plotW;
+    const pts = historico.map((p, i) => {
+      const x = padLeft + (n > 1 ? (i / (n - 1)) * availW : plotW / 2);
+      const y = padTop + plotH - ((p.peso - minP) / rangeP) * plotH;
+      return {
+        x,
+        y,
+        peso: p.peso,
+        data: core.formatDateBR(p.data),
+        gmd: i > 0 ? formatGmd(p.gmdPeriodo) + ' kg/d' : 'Base Inicial',
+        ganho: i > 0 ? formatKg(p.ganhoPeriodo) + ' kg' : '0.0 kg',
+        obs: p.observacao || 'Pesagem regular',
+        idx: i
+      };
+    });
+
+    // Construção de Curva Spline Laser (Catmull-Rom para Bézier Cúbica)
+    let splinePath = '';
+    let areaPath = '';
+    let projSvg = '';
+
+    if (pts.length > 1) {
+      splinePath = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i === 0 ? 0 : i - 1];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[i + 2] || p2;
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        splinePath += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+      }
+      areaPath = `${splinePath} L ${pts[pts.length - 1].x.toFixed(1)},${baseY} L ${pts[0].x.toFixed(1)},${baseY} Z`;
+
+      // Projeção futura (+30 dias com base no GMD)
+      const lastPt = pts[pts.length - 1];
+      const gmdVal = m.gmdGlobal || 0;
+      const projPeso = Math.max(minP, lastPt.peso + (gmdVal * 30));
+      const projX = Math.min(svgW - 20, lastPt.x + 72);
+      const projY = Math.max(padTop, Math.min(baseY, padTop + plotH - ((projPeso - minP) / rangeP) * plotH));
+
+      projSvg = `
+        <line x1="${lastPt.x.toFixed(1)}" y1="${lastPt.y.toFixed(1)}" x2="${projX.toFixed(1)}" y2="${projY.toFixed(1)}"
+          stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="5 4" opacity="0.95" filter="url(#gmdCyanGlow)" />
+        <circle cx="${projX.toFixed(1)}" cy="${projY.toFixed(1)}" r="4.5" fill="#38bdf8" />
+        <rect x="${(projX - 48).toFixed(1)}" y="${(projY - 26).toFixed(1)}" width="96" height="20" rx="5" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2" />
+        <text x="${projX.toFixed(1)}" y="${(projY - 13).toFixed(1)}" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">
+          +30d: ${projPeso.toFixed(1)} kg
+        </text>
+      `;
+    }
+
+    // Linhas de Grade Horizontais
+    const gridLines = [0, 0.33, 0.66, 1]
+      .map((pct) => {
+        const val = minP + rangeP * pct;
+        const y = padTop + plotH - pct * plotH;
+        return `
+        <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${svgW - padRight + 70}" y2="${y.toFixed(1)}" stroke="#1e293b" stroke-dasharray="3 3" />
+        <text x="${padLeft - 10}" y="${(y + 4).toFixed(1)}" fill="#64748b" font-size="10" font-weight="bold" text-anchor="end">${val.toFixed(0)} kg</text>
+      `;
+      })
+      .join('');
+
+    // Conteúdo Gráfico
+    let mainVisual = '';
+    if (mode === 'spline') {
+      mainVisual = `
+        ${areaPath ? `<path d="${areaPath}" fill="url(#gmdAreaGrad)" />` : ''}
+        ${splinePath ? `<path d="${splinePath}" fill="none" stroke="url(#gmdLineGrad)" stroke-width="3.5" filter="url(#gmdNeonGlow)" />` : ''}
+        ${projSvg}
+
+        ${pts
+          .map(
+            (p) => `
+          <g style="cursor:pointer;"
+            onclick="AmadeusViews.inspecionarPontoGMD(${p.idx}, '${p.data}', ${p.peso.toFixed(1)}, '${p.ganho}', '${p.gmd}', '${p.obs}')"
+            onmouseover="AmadeusViews.inspecionarPontoGMD(${p.idx}, '${p.data}', ${p.peso.toFixed(1)}, '${p.ganho}', '${p.gmd}', '${p.obs}')">
+            <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="10" fill="rgba(16, 185, 129, 0.28)" class="svg-pulse-node" />
+            <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="#10b981" stroke="#ffffff" stroke-width="2" />
+            <text x="${p.x.toFixed(1)}" y="${(p.y - 12).toFixed(1)}" fill="#34d399" font-size="11" font-weight="bold" text-anchor="middle">
+              ${p.peso.toFixed(1)} kg
+            </text>
+            <text x="${p.x.toFixed(1)}" y="${(baseY + 18).toFixed(1)}" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">
+              ${p.data}
+            </text>
+            <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="22" fill="transparent" />
+          </g>
+        `
+          )
+          .join('')}
+      `;
+    } else {
+      const maxGmd = Math.max(0.1, ...historico.map((h) => Math.abs(h.gmdPeriodo)));
+      const barW = Math.min(65, plotW / (n * 1.5));
+      mainVisual = `
+        <line x1="${padLeft}" y1="${(baseY - plotH / 2).toFixed(1)}" x2="${svgW - padRight}" y2="${(baseY - plotH / 2).toFixed(1)}" stroke="#334155" stroke-dasharray="4 4" />
+        <text x="${padLeft - 8}" y="${(baseY - plotH / 2 + 4).toFixed(1)}" fill="#64748b" font-size="9" text-anchor="end">0.0 kg/d</text>
+
+        ${historico
+          .map((p, idx) => {
+            const x = padLeft + (idx + 0.5) * (plotW / n);
+            const isBase = idx === 0;
+            const gmd = p.gmdPeriodo;
+            const gmdH = isBase ? 15 : Math.max(12, Math.round((Math.abs(gmd) / maxGmd) * (plotH / 2.3)));
+            const isPos = gmd >= 0;
+            const zeroY = baseY - plotH / 2;
+            const y = isBase ? zeroY - 15 : isPos ? zeroY - gmdH : zeroY;
+            const fillGrad = isBase ? 'rgba(100, 116, 139, 0.5)' : isPos ? 'url(#gmdNeonGreenBar)' : 'url(#gmdNeonRedBar)';
+            const gmdTxt = isBase ? 'Base' : formatGmd(gmd);
+            return `
+              <g style="cursor:pointer;"
+                onclick="AmadeusViews.inspecionarPontoGMD(${idx}, '${core.formatDateBR(p.data)}', ${p.peso.toFixed(1)}, '${idx > 0 ? formatKg(p.ganhoPeriodo) + ' kg' : '0.0 kg'}', '${gmdTxt} kg/d', '${p.observacao || ''}')">
+                <rect x="${(x - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${gmdH}" rx="5" fill="${fillGrad}" />
+                <text x="${x.toFixed(1)}" y="${(isPos ? y - 6 : y + gmdH + 12).toFixed(1)}" fill="${isPos ? '#34d399' : '#f87171'}" font-size="10" font-weight="bold" text-anchor="middle">
+                  ${gmdTxt}
+                </text>
+                <text x="${x.toFixed(1)}" y="${(baseY + 18).toFixed(1)}" fill="#94a3b8" font-size="10" text-anchor="middle">
+                  ${core.formatDateBR(p.data)}
+                </text>
+              </g>
+            `;
+          })
+          .join('')}
+      `;
+    }
+
+    return `
+      <div class="gmd-tech-stage" id="gmd-telemetry-stage">
+        <div class="gmd-stage-header">
+          <div class="gmd-stage-title-wrap">
+            <span class="gmd-live-badge">🟢 Telemetria Vetorial Ativa</span>
+            <div>
+              <div class="gmd-stage-title">Curva Zootécnica &amp; Telemetria Ponderal — ${selecionado.brinco} (${selecionado.nome})</div>
+              <div class="gmd-stage-sub">Acompanhamento contínuo de alta precisão com interpolação spline e projeção de crescimento</div>
+            </div>
+          </div>
+          <div class="gmd-stage-actions">
+            <button class="gmd-tech-btn ${mode === 'spline' ? 'active' : ''}" onclick="AmadeusViews.setGmdChartMode('spline')">
+              📈 Curva Spline Laser
+            </button>
+            <button class="gmd-tech-btn ${mode === 'bars' ? 'active' : ''}" onclick="AmadeusViews.setGmdChartMode('bars')">
+              📊 Histograma GMD
+            </button>
+            <button class="gmd-tech-btn" onclick="AmadeusViews.toggleChartFullscreen('gmd-chart')">
+              ${isFullscreen ? '🗗 Sair da Tela Cheia' : '⛶ Tela Cheia'}
+            </button>
+          </div>
+        </div>
+
+        <!-- HUD de Telemetria Interativo -->
+        <div class="gmd-hud-readout">
+          <div class="gmd-hud-item">
+            <span class="gmd-hud-label">📅 Pesagem Selecionada</span>
+            <span class="gmd-hud-val" id="hud-gmd-data">${core.formatDateBR(lastP.data)}</span>
+          </div>
+          <div class="gmd-hud-item">
+            <span class="gmd-hud-label">⚖️ Peso Registrado</span>
+            <span class="gmd-hud-val emerald" id="hud-gmd-peso">${lastP.peso.toFixed(1)} kg</span>
+          </div>
+          <div class="gmd-hud-item">
+            <span class="gmd-hud-label">📈 Ganho no Intervalo</span>
+            <span class="gmd-hud-val" id="hud-gmd-ganho">${historico.length > 1 ? formatKg(lastP.ganhoPeriodo) + ' kg' : 'Base Inicial'}</span>
+          </div>
+          <div class="gmd-hud-item">
+            <span class="gmd-hud-label">⚡ GMD no Período</span>
+            <span class="gmd-hud-val amber" id="hud-gmd-taxa">${historico.length > 1 ? formatGmd(lastP.gmdPeriodo) + ' kg/d' : 'Base Inicial'}</span>
+          </div>
+          <div class="gmd-hud-item" style="grid-column: span 2;">
+            <span class="gmd-hud-label">📝 Anotação de Manejo</span>
+            <span class="gmd-hud-val" id="hud-gmd-obs" style="font-size:0.85rem; color:#cbd5e1; font-weight:500;">${lastP.observacao || 'Pesagem regular sem intercorrências'}</span>
+          </div>
+        </div>
+
+        <!-- SVG Gráfico Vetorial de Alta Precisão -->
+        <div class="gmd-svg-container">
+          <svg class="gmd-svg-chart" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="gmdAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.45" />
+                <stop offset="70%" stop-color="#10b981" stop-opacity="0.08" />
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0.00" />
+              </linearGradient>
+
+              <linearGradient id="gmdLineGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#059669" />
+                <stop offset="50%" stop-color="#10b981" />
+                <stop offset="100%" stop-color="#34d399" />
+              </linearGradient>
+
+              <linearGradient id="gmdNeonGreenBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#34d399" />
+                <stop offset="100%" stop-color="#059669" />
+              </linearGradient>
+
+              <linearGradient id="gmdNeonRedBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f87171" />
+                <stop offset="100%" stop-color="#b91c1c" />
+              </linearGradient>
+
+              <filter id="gmdNeonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#10b981" flood-opacity="0.55" />
+              </filter>
+              <filter id="gmdCyanGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#38bdf8" flood-opacity="0.6" />
+              </filter>
+            </defs>
+
+            ${gridLines}
+            ${mainVisual}
+          </svg>
+        </div>
+      </div>
+    `;
+  },
+
   renderSubTabRebanhoGMD(animais, selecionado, m, isFullscreen, canCreate, isAdmin) {
     const core = window.AmadeusCore;
     const formatGmd = (v) => (v > 0 ? `+${v.toFixed(3)}` : v.toFixed(3));
     const formatKg = (v) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1));
+
+    const termo = (this.buscaAnimalTermo || '').toLowerCase().trim();
+    const animaisFiltrados = termo
+      ? animais.filter((a) => (a.brinco || '').toLowerCase().includes(termo) || (a.nome || '').toLowerCase().includes(termo))
+      : animais;
 
     const getSpeciesIcon = (esp) => {
       const e = (esp || '').toLowerCase();
@@ -3299,181 +3619,212 @@ const AmadeusViews = {
       return '🏷️';
     };
 
-    return `
-      <div class="card">
-        <!-- Topo Limpo: Título + Badge de Fórmula + Botão Cadastrar Animal -->
-        <div class="card-header" style="flex-wrap:wrap; gap:0.6rem; align-items:flex-start;">
-          <div>
-            <div class="card-title">🐄 Desempenho Zootécnico &amp; Curva de Ganho Médio Diário (GMD)</div>
-            <button type="button" class="gmd-formula-badge" onclick="AmadeusViews.abrirModalFormulaGMD()" title="Metodologia oficial de cálculo do GMD">
-              📐 Como é calculado o GMD?
-            </button>
-          </div>
-          <div style="display:flex; gap:0.5rem; align-items:center;">
-            ${
-              canCreate
-                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAnimal()">➕ Cadastrar Animal</button>`
-                : ''
-            }
-          </div>
-        </div>
-
-        <!-- Painel Central de Seleção e Ações Rápidas -->
-        <div class="gmd-control-panel">
-          <div class="gmd-control-top">
-            <div class="gmd-select-group">
-              <label class="gmd-select-label">
-                <span>🏷️ Animal em Análise</span>
-                <span style="font-weight:normal; font-size:0.7rem; color:var(--slate-400);">(${animais.length} no rebanho)</span>
-              </label>
-              <select class="gmd-select" onchange="AmadeusCore.animalSelecionadoId=this.value; AmadeusViews.renderMainContent();">
-                ${animais
-                  .map((a) => {
-                    const met = core.calcularMetricasAnimal(a);
-                    const ativo = selecionado && selecionado.id === a.id;
-                    const gmdStr = formatGmd(met.gmdGlobal);
-                    return `
-                      <option value="${a.id}" ${ativo ? 'selected' : ''}>
-                        ${a.brinco} · ${a.nome} (${a.especie}${a.raca ? ` - ${a.raca}` : ''}) — GMD: ${gmdStr} kg/d
-                      </option>
-                    `;
-                  })
-                  .join('')}
-              </select>
-            </div>
-
-            <!-- Ações do Animal Ativo -->
-            ${
-              selecionado
-                ? `
-              <div class="gmd-actions-group">
-                ${
-                  canCreate
-                    ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPesagem('${selecionado.id}')" title="Registrar nova pesagem corporal">⚖️ Registrar Pesagem</button>`
-                    : ''
-                }
-                <button class="btn btn-sm btn-outline-secondary" onclick="AmadeusCore.exportarFichaAnimalPDF('${selecionado.id}')" title="Exportar Ficha Zootécnica em PDF">📄 Ficha Individual PDF</button>
-                ${
-                  isAdmin
-                    ? `
-                  <button class="btn btn-sm btn-outline-secondary" onclick="AmadeusViews.abrirModalAnimal('${selecionado.id}')" title="Editar dados cadastrais">✏️ Editar Animal</button>
-                  <button class="btn btn-sm btn-outline-danger" onclick="AmadeusViews.excluirAnimal('${selecionado.id}')" title="Excluir animal do rebanho">🗑️ Excluir</button>
-                `
-                    : ''
-                }
-              </div>
-            `
-                : ''
-            }
-          </div>
-
-          <!-- Carrossel de Troca Rápida de Animal (Não quebra em várias linhas) -->
-          <div class="gmd-chips-scroll">
-            ${animais
-              .map((a) => {
-                const met = core.calcularMetricasAnimal(a);
-                const ativo = selecionado && selecionado.id === a.id;
-                const gmdVal = met.gmdGlobal;
-                const tagClass = gmdVal > 0 ? 'positive' : gmdVal < 0 ? 'negative' : 'neutral';
-                const tagSymbol = gmdVal > 0 ? '▲' : gmdVal < 0 ? '▼' : '●';
-                const gmdStr = formatGmd(gmdVal);
-                return `
-                  <div class="gmd-chip ${ativo ? 'active' : ''}"
-                    onclick="AmadeusCore.animalSelecionadoId='${a.id}'; AmadeusViews.renderMainContent();"
-                    title="${a.nome} (${a.especie}) — Clique para selecionar">
-                    <span>${getSpeciesIcon(a.especie)} <strong>${a.brinco}</strong> ${a.nome}</span>
-                    <span class="gmd-chip-tag ${tagClass}">${tagSymbol} ${gmdStr} kg/d</span>
-                  </div>
-                `;
-              })
-              .join('')}
-          </div>
-        </div>
-
-        ${
-          selecionado && m
-            ? `
-          <!-- Hero Card: Identidade & Status Zootécnico do Animal -->
-          <div class="gmd-hero-card">
-            <div class="gmd-hero-identity">
-              <div class="gmd-hero-avatar">
-                ${getSpeciesIcon(selecionado.especie)}
-              </div>
-              <div class="gmd-hero-info">
-                <div class="gmd-hero-title">
-                  <span class="gmd-hero-tag">${selecionado.brinco}</span>
-                  <span>${selecionado.nome}</span>
-                </div>
-                <div class="gmd-hero-meta">
-                  <span><strong>Espécie/Raça:</strong> ${selecionado.especie} (${selecionado.raca || 'Sem raça def.'})</span>
-                  <span>•</span>
-                  <span><strong>Lote:</strong> ${selecionado.lote || 'Geral'}</span>
-                  ${selecionado.sexo ? `<span>•</span><span><strong>Sexo:</strong> ${selecionado.sexo}</span>` : ''}
-                </div>
+    // SE NENHUM ANIMAL FOI SELECIONADO/CLICADO:
+    // Exibe apenas a Central de Busca e a lista de animais para o usuario pesquisar e escolher!
+    if (!selecionado) {
+      return `
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap; gap:0.6rem;">
+            <div>
+              <div class="card-title">🔍 Busca &amp; Análise Individual de Animal</div>
+              <div style="font-size:0.82rem; color:var(--slate-600); margin-top:0.2rem;">
+                Pesquise por <strong>número de brinco</strong> ou <strong>nome</strong> para carregar o gráfico de telemetria e o histórico zootécnico.
               </div>
             </div>
-
-            <div class="gmd-hero-status">
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <button type="button" class="gmd-formula-badge" onclick="AmadeusViews.abrirModalFormulaGMD()">
+                📐 Fórmula Oficial GMD
+              </button>
               ${
-                m.gmdGlobal > 0.05
-                  ? `<div class="gmd-badge-pill positive">▲ Ganho Satisfatório (${formatGmd(m.gmdGlobal)} kg/d)</div>`
-                  : m.gmdGlobal < 0
-                  ? `<div class="gmd-badge-pill negative">▼ Perda de Peso (${formatGmd(m.gmdGlobal)} kg/d)</div>`
-                  : `<div class="gmd-badge-pill neutral">● Peso Estável (${formatGmd(m.gmdGlobal)} kg/d)</div>`
+                canCreate
+                  ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalAnimal()">➕ Cadastrar Animal</button>`
+                  : ''
               }
             </div>
           </div>
 
-          <!-- Grade de Indicadores (KPIs) -->
-          <div class="kpi-grid">
-            <div class="kpi-card blue">
-              <div class="kpi-label">Peso Inicial → Atual</div>
-              <div class="kpi-value">${m.pesoInicial.toFixed(1)} → ${m.pesoAtual.toFixed(1)} kg</div>
-              <div class="kpi-sub">Ganho acumulado: ${formatKg(m.ganhoTotalKg)} kg em ${m.diasTotais} dias</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">GMD Global (Período Total)</div>
-              <div class="kpi-value" style="color:${m.gmdGlobal >= 0 ? 'var(--green-800)' : 'var(--red-600)'};">
-                ${formatGmd(m.gmdGlobal)} kg/dia
+          <!-- Barra de Pesquisa Proeminente -->
+          <div class="gmd-search-stage">
+            <div class="gmd-search-bar-wrap">
+              <div class="gmd-search-input-box">
+                <span class="gmd-search-icon">🔍</span>
+                <input
+                  type="text"
+                  id="gmd-busca-input"
+                  class="gmd-search-input"
+                  placeholder="Buscar animal por Brinco (ex: EXP-01) ou Nome (ex: Boreal)..."
+                  value="${this.buscaAnimalTermo || ''}"
+                  oninput="AmadeusViews.aoDigitarBuscaAnimal(this.value)"
+                  onkeydown="if(event.key==='Enter') AmadeusViews.executarBuscaAnimal()"
+                />
+                ${
+                  this.buscaAnimalTermo
+                    ? `<button class="gmd-search-clear" onclick="AmadeusViews.limparBuscaAnimal()" title="Limpar busca">✕</button>`
+                    : ''
+                }
               </div>
-              <div class="kpi-sub">(${m.pesoAtual.toFixed(1)} − ${m.pesoInicial.toFixed(1)}) ÷ ${m.diasTotais} dias</div>
-            </div>
-            <div class="kpi-card amber">
-              <div class="kpi-label">GMD Última Pesagem</div>
-              <div class="kpi-value" style="color:${m.gmdUltimoPeriodo >= 0 ? 'var(--amber-700)' : 'var(--red-600)'};">
-                ${formatGmd(m.gmdUltimoPeriodo)} kg/dia
-              </div>
-              <div class="kpi-sub">Desempenho no intervalo mais recente</div>
-            </div>
-          </div>
-
-          <!-- Gráfico de Evolução de Peso e GMD -->
-          <div class="chart-container ${isFullscreen ? 'fullscreen' : ''}">
-            <div class="card-header">
-              <div class="card-title">📈 Curva de Evolução de Peso (kg) e GMD — ${selecionado.brinco} (${selecionado.nome})</div>
-              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.toggleChartFullscreen('gmd-chart')">
-                ${isFullscreen ? '🗗 Sair da Tela Cheia' : '⛶ Expandir Gráfico'}
+              <button class="btn btn-primary" onclick="AmadeusViews.executarBuscaAnimal()" style="padding:0.72rem 1.25rem;">
+                ⚡ Pesquisar Animal
               </button>
             </div>
-            <div class="chart-bars-wrap">
-              ${m.historicoDetalhado
-                .map((p, i) => {
-                  const maxPeso = Math.max(50, ...m.historicoDetalhado.map((x) => x.peso));
-                  const hPct = Math.max(15, Math.round((p.peso / maxPeso) * 100));
-                  const gmdTxt = i > 0 ? `(GMD: ${formatGmd(p.gmdPeriodo)})` : '(Inicial)';
-                  return `
-                    <div class="chart-bar-col" onclick="AmadeusCore.toast('${core.formatDateBR(p.data)}: ${p.peso.toFixed(1)} kg | GMD: ${formatGmd(p.gmdPeriodo)} kg/dia')">
-                      <div class="chart-bar-val">${p.peso.toFixed(1)} kg ${gmdTxt}</div>
-                      <div class="chart-bar-fill green-bar" style="height:${hPct}%; max-width:65px;"></div>
-                      <div class="chart-bar-label" style="transform:none;">${core.formatDateBR(p.data)}</div>
-                    </div>
-                  `;
-                })
-                .join('')}
+
+            <!-- Grade de Animais Encontrados -->
+            ${
+              animaisFiltrados.length === 0
+                ? `
+              <div class="empty-state">
+                <div class="empty-state-icon">🔍</div>
+                <div class="empty-state-title">Nenhum animal encontrado para "${this.buscaAnimalTermo}"</div>
+                <div class="empty-state-sub">Verifique se o brinco ou nome foi digitado corretamente ou limpe o filtro para ver todos.</div>
+                <button class="btn btn-secondary" onclick="AmadeusViews.limparBuscaAnimal()">Limpar Pesquisa</button>
+              </div>
+            `
+                : `
+              <div style="font-size:0.78rem; font-weight:700; color:var(--slate-500); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.5rem;">
+                ${animaisFiltrados.length} ${animaisFiltrados.length === 1 ? 'animal disponível' : 'animais disponíveis'} no rebanho (Clique em um animal para gerar o gráfico):
+              </div>
+              <div class="gmd-animal-grid">
+                ${animaisFiltrados
+                  .map((a) => {
+                    const met = core.calcularMetricasAnimal(a);
+                    const gmdVal = met.gmdGlobal;
+                    const gmdClass = gmdVal > 0 ? 'pos' : gmdVal < 0 ? 'neg' : 'neu';
+                    const gmdSymbol = gmdVal > 0 ? '▲' : gmdVal < 0 ? '▼' : '●';
+                    return `
+                      <div class="gmd-animal-card" onclick="AmadeusViews.selecionarAnimalParaGrafico('${a.id}')">
+                        <div>
+                          <div class="gmd-card-top">
+                            <span class="gmd-card-tag">${a.brinco}</span>
+                            <span class="gmd-card-species">${getSpeciesIcon(a.especie)} ${a.especie}</span>
+                          </div>
+                          <div class="gmd-card-name" style="margin-top:0.5rem;">${a.nome}</div>
+                          <div class="gmd-card-metrics" style="margin-top:0.6rem;">
+                            <div><strong>Raça:</strong> ${a.raca || 'Sem raça def.'}</div>
+                            <div><strong>Lote:</strong> ${a.lote || 'Geral'}</div>
+                            <div><strong>Peso Atual:</strong> ${met.pesoAtual.toFixed(1)} kg (${met.historicoDetalhado.length} pesagens)</div>
+                          </div>
+                        </div>
+                        <div class="gmd-card-footer">
+                          <div class="gmd-card-gmd ${gmdClass}">
+                            ${gmdSymbol} GMD: ${formatGmd(gmdVal)} kg/d
+                          </div>
+                          <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); AmadeusViews.selecionarAnimalParaGrafico('${a.id}')">
+                            📈 Ver Gráfico →
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  })
+                  .join('')}
+              </div>
+            `
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    // SE O ANIMAL FOI SELECIONADO:
+    // Renderiza a barra de navegação/troca, o Hero Card, KPIs, o GRÁFICO ULTRA-TECNOLÓGICO e a tabela!
+    return `
+      <div>
+        <!-- Barra de Navegação & Ações do Animal -->
+        <div class="gmd-nav-toolbar">
+          <div class="gmd-active-chip">
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.desselecionarAnimalGMD()" title="Voltar para a pesquisa de animais">
+              🔍 Trocar de Animal / Nova Busca
+            </button>
+            <span style="color:var(--slate-300);">|</span>
+            <span style="font-size:0.85rem; color:var(--slate-600);">Visualizando:</span>
+            <span class="gmd-card-tag">${selecionado.brinco}</span>
+            <strong style="color:var(--slate-900); font-size:0.95rem;">${selecionado.nome}</strong>
+          </div>
+
+          <div style="display:flex; gap:0.45rem; align-items:center; flex-wrap:wrap;">
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPesagem('${selecionado.id}')" title="Registrar nova pesagem corporal">⚖️ Registrar Pesagem</button>`
+                : ''
+            }
+            <button class="btn btn-sm btn-outline-secondary" onclick="AmadeusCore.exportarFichaAnimalPDF('${selecionado.id}')" title="Exportar Ficha Zootécnica em PDF">📄 Ficha PDF</button>
+            ${
+              isAdmin
+                ? `
+              <button class="btn btn-sm btn-outline-secondary" onclick="AmadeusViews.abrirModalAnimal('${selecionado.id}')" title="Editar dados cadastrais">✏️ Editar</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="AmadeusViews.excluirAnimal('${selecionado.id}')" title="Excluir animal do rebanho">🗑️ Excluir</button>
+            `
+                : ''
+            }
+          </div>
+        </div>
+
+        <!-- Hero Card do Animal Selecionado -->
+        <div class="gmd-hero-card">
+          <div class="gmd-hero-identity">
+            <div class="gmd-hero-avatar">
+              ${getSpeciesIcon(selecionado.especie)}
+            </div>
+            <div class="gmd-hero-info">
+              <div class="gmd-hero-title">
+                <span class="gmd-hero-tag">${selecionado.brinco}</span>
+                <span>${selecionado.nome}</span>
+              </div>
+              <div class="gmd-hero-meta">
+                <span><strong>Espécie/Raça:</strong> ${selecionado.especie} (${selecionado.raca || 'Sem raça def.'})</span>
+                <span>•</span>
+                <span><strong>Lote:</strong> ${selecionado.lote || 'Geral'}</span>
+                ${selecionado.sexo ? `<span>•</span><span><strong>Sexo:</strong> ${selecionado.sexo}</span>` : ''}
+              </div>
             </div>
           </div>
 
-          <!-- Tabela de Pesagens do Animal -->
+          <div class="gmd-hero-status">
+            ${
+              m.gmdGlobal > 0.05
+                ? `<div class="gmd-badge-pill positive">▲ Ganho Satisfatório (${formatGmd(m.gmdGlobal)} kg/d)</div>`
+                : m.gmdGlobal < 0
+                ? `<div class="gmd-badge-pill negative">▼ Perda de Peso (${formatGmd(m.gmdGlobal)} kg/d)</div>`
+                : `<div class="gmd-badge-pill neutral">● Peso Estável (${formatGmd(m.gmdGlobal)} kg/d)</div>`
+            }
+          </div>
+        </div>
+
+        <!-- KPIs Zootécnicos -->
+        <div class="kpi-grid">
+          <div class="kpi-card blue">
+            <div class="kpi-label">Peso Inicial → Atual</div>
+            <div class="kpi-value">${m.pesoInicial.toFixed(1)} → ${m.pesoAtual.toFixed(1)} kg</div>
+            <div class="kpi-sub">Ganho acumulado: ${formatKg(m.ganhoTotalKg)} kg em ${m.diasTotais} dias</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">GMD Global (Período Total)</div>
+            <div class="kpi-value" style="color:${m.gmdGlobal >= 0 ? 'var(--green-800)' : 'var(--red-600)'};">
+              ${formatGmd(m.gmdGlobal)} kg/dia
+            </div>
+            <div class="kpi-sub">(${m.pesoAtual.toFixed(1)} − ${m.pesoInicial.toFixed(1)}) ÷ ${m.diasTotais} dias</div>
+          </div>
+          <div class="kpi-card amber">
+            <div class="kpi-label">GMD Última Pesagem</div>
+            <div class="kpi-value" style="color:${m.gmdUltimoPeriodo >= 0 ? 'var(--amber-700)' : 'var(--red-600)'};">
+              ${formatGmd(m.gmdUltimoPeriodo)} kg/dia
+            </div>
+            <div class="kpi-sub">Desempenho no intervalo mais recente</div>
+          </div>
+        </div>
+
+        <!-- O GRÁFICO DE NÍVEL MÁXIMO DE TECNOLOGIA COM INOVAÇÃO -->
+        ${this.renderGraficoZootecnicoAvancado(selecionado, m, isFullscreen)}
+
+        <!-- Tabela de Pesagens do Animal -->
+        <div class="card" style="margin-top:1.25rem;">
+          <div class="card-header">
+            <div class="card-title">📋 Registro Histórico de Pesagens — ${selecionado.brinco} (${selecionado.nome})</div>
+            ${
+              canCreate
+                ? `<button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPesagem('${selecionado.id}')">⚖️ Nova Pesagem</button>`
+                : ''
+            }
+          </div>
           <div class="table-responsive">
             <table class="data-table">
               <thead>
@@ -3519,16 +3870,7 @@ const AmadeusViews = {
               </tbody>
             </table>
           </div>
-        `
-            : `
-          <div class="empty-state">
-            <div class="empty-state-icon">🐄</div>
-            <div class="empty-state-title">Nenhum animal selecionado</div>
-            <div class="empty-state-sub">Cadastre um animal ou selecione um item acima para visualizar a curva de Ganho Médio Diário.</div>
-            ${canCreate ? `<button class="btn btn-primary" onclick="AmadeusViews.abrirModalAnimal()">➕ Cadastrar Animal</button>` : ''}
-          </div>
-        `
-        }
+        </div>
       </div>
     `;
   },
