@@ -7540,44 +7540,50 @@ const AmadeusViews = {
 
     return `
       <!-- Barra Superior de Ações do Módulo de Mapa / Área -->
-      <div class="card" style="margin-bottom:1.25rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
-          <div>
-            <div style="font-size:0.78rem; font-weight:800; color:var(--green-700); text-transform:uppercase; letter-spacing:0.05em;">
-              📍 Georreferenciamento &amp; Reconhecimento Espacial no Campus
+      <div class="card" style="margin-bottom:1.15rem; padding:1.15rem 1.35rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+          <div style="max-width:620px;">
+            <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.25rem;">
+              <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:0.2rem 0.5rem; border-radius:4px;">
+                📍 Cartografia Agrícola &amp; Georreferenciamento
+              </span>
+              <span style="font-size:0.75rem; color:#64748b;">· IF Baiano</span>
             </div>
-            <h3 style="font-size:1.18rem; font-weight:800; margin:0.15rem 0 0.25rem 0; color:var(--slate-900);">
+            <h2 style="font-size:1.25rem; font-weight:800; color:var(--slate-900); margin:0 0 0.25rem 0; line-height:1.3;">
               ${mapaArea.nomeArea}
-            </h3>
-            <p style="font-size:0.84rem; color:var(--slate-600); margin:0;">
-              ${mapaArea.descricao || 'Área experimental destinada ao Sistema de Plantio Direto e ILP no Campus IF Baiano.'}
+            </h2>
+            <p style="font-size:0.84rem; color:var(--slate-600); margin:0; line-height:1.45;">
+              ${mapaArea.descricao || 'Gleba experimental destinada ao Sistema de Plantio Direto (SPD) e consórcios forrageiros (Milho + Brachiaria / Integração Lavoura-Pecuária).'}
             </p>
           </div>
-          <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
-            <a href="${mapaArea.linkGoogleMaps}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:0.35rem; text-decoration:none;">
-              🌍 Abrir no Google Maps
-            </a>
-            <a href="${mapaArea.linkGoogleEarth}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" style="display:inline-flex; align-items:center; gap:0.35rem; text-decoration:none;">
-              🛰️ Abrir no Google Earth
-            </a>
-            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.capturarGpsAreaSipa()" title="Capturar coordenadas atuais pelo GPS do aparelho">
-              📍 Capturar GPS pelo Aparelho
-            </button>
-            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.copiarCoordenadasAreaSipa()" title="Copiar coordenadas e link para compartilhar no WhatsApp">
-              📋 Compartilhar Link &amp; GPS
-            </button>
-            ${
-              canCreate
-                ? `
-              <button class="btn btn-sm btn-amber" onclick="AmadeusViews.abrirModalImagemAreaSipa()">
-                📸 Adicionar Foto / Croqui
+
+          <!-- Ações Padronizadas e Harmoniosas -->
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.5rem; flex-wrap:wrap;">
+            <div style="display:flex; gap:0.45rem; align-items:center; flex-wrap:wrap;">
+              ${
+                canCreate
+                  ? `
+                <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalEditarAreaSipa()" style="font-weight:700;">
+                  ✏️ Editar Gleba
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="AmadeusViews.abrirModalImagemAreaSipa()">
+                  📷 Foto / Croqui
+                </button>
+              `
+                  : ''
+              }
+              <button class="btn btn-sm btn-outline-secondary" onclick="AmadeusViews.copiarCoordenadasAreaSipa()" title="Copiar coordenadas e link para WhatsApp">
+                📋 Compartilhar
               </button>
-              <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.abrirModalEditarAreaSipa()">
-                ✏️ Editar Dados da Área
-              </button>
-            `
-                : ''
-            }
+            </div>
+            <div style="display:flex; gap:0.45rem; align-items:center;">
+              <a href="${mapaArea.linkGoogleMaps}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-secondary" style="font-size:0.75rem; text-decoration:none;">
+                🗺️ Google Maps ↗
+              </a>
+              <a href="${mapaArea.linkGoogleEarth}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-secondary" style="font-size:0.75rem; text-decoration:none;">
+                🌐 Google Earth 3D ↗
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -7585,24 +7591,28 @@ const AmadeusViews = {
       <!-- MAPA INTERATIVO SATÉLITE LEAFLET -->
       <div class="sipa-map-wrapper">
         <div class="sipa-map-toolbar">
-          <div style="display:flex; align-items:center; gap:0.5rem;">
-            <span style="font-size:1.2rem;">🛰️</span>
+          <div style="display:flex; align-items:center; gap:0.55rem;">
+            <span style="font-size:1.25rem;">🛰️</span>
             <div>
-              <strong style="font-size:0.92rem;">Mapeamento por Satélite em Alta Resolução (Campus IF Baiano)</strong>
-              <div style="font-size:0.75rem; color:var(--slate-500);">
-                Alterne entre Imagem de Satélite Esri HD e Terreno/Ruas no menu superior direito do mapa
+              <strong style="font-size:0.92rem; color:var(--slate-900);">Satélite de Alta Resolução</strong>
+              <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; margin-left:0.35rem; padding:0.15rem 0.45rem; border-radius:4px;">Esri HD · Ao Vivo</span>
+              <div style="font-size:0.74rem; color:var(--slate-500); margin-top:0.1rem;">
+                Delimitação agronômica da Gleba SPD 01 (1,50 ha) e pontos de interesse no Campus
               </div>
             </div>
           </div>
-          <div style="display:flex; gap:0.35rem; align-items:center;">
-            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.recentralizarMapaSipa()" title="Recentralizar mapa na gleba">
-              🎯 Centralizar Área
+          <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.recentralizarMapaSipa()" title="Centralizar na Gleba Experimental">
+              🎯 Centralizar
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.capturarGpsAreaSipa()" title="Localizar meu dispositivo pelo GPS do aparelho">
+              📍 Meu GPS
             </button>
             ${
               canCreate
                 ? `
-              <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPontoMapaSipa()" title="Marcar novo ponto GPS no mapa">
-                📌 Adicionar Ponto / Marco
+              <button class="btn btn-sm btn-primary" onclick="AmadeusViews.abrirModalPontoMapaSipa()" title="Adicionar novo marco ou ponto técnico">
+                📌 + Novo Marco
               </button>
             `
                 : ''
@@ -7612,16 +7622,33 @@ const AmadeusViews = {
 
         <div id="sipa-mapa-leaf" class="sipa-map-container"></div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; padding:0.6rem 1rem; background:var(--slate-50); border-top:1px solid var(--slate-200); font-size:0.78rem; color:var(--slate-600);">
-          <div>
-            📍 <strong>Coordenadas Centrais:</strong> Lat <code>${mapaArea.lat.toFixed(6)}</code> | Lng <code>${mapaArea.lng.toFixed(6)}</code>
+        <!-- Telemetria do Mapa em Pílulas Modernas -->
+        <div class="map-telemetry-bar">
+          <div class="map-pill">
+            <span class="pill-icon">📍</span>
+            <span class="pill-label">GPS Central:</span>
+            <code class="pill-value">${mapaArea.lat.toFixed(6)}, ${mapaArea.lng.toFixed(6)}</code>
           </div>
-          <div>
-            📐 <strong>Área Total:</strong> ${Number(mapaArea.areaHa || 1.5).toFixed(2)} ha (${Math.round((mapaArea.areaHa || 1.5) * 10000).toLocaleString('pt-BR')} m²) &nbsp;|&nbsp; 
-            📏 <strong>Perímetro:</strong> ~${mapaArea.perimetroM || 520} m
+          <div class="map-pill">
+            <span class="pill-icon">📐</span>
+            <span class="pill-label">Área Mapeada:</span>
+            <strong class="pill-value">${Number(mapaArea.areaHa || 1.5).toFixed(2)} ha</strong>
+            <span class="pill-sub">(${Math.round((mapaArea.areaHa || 1.5) * 10000).toLocaleString('pt-BR')} m²)</span>
           </div>
-          <div>
-            📌 <strong>Pontos Mapeados:</strong> ${pontos.length} ponto(s) de interesse
+          <div class="map-pill">
+            <span class="pill-icon">📏</span>
+            <span class="pill-label">Perímetro:</span>
+            <strong class="pill-value">~${mapaArea.perimetroM || 520} m</strong>
+          </div>
+          <div class="map-pill">
+            <span class="pill-icon">🌱</span>
+            <span class="pill-label">Manejo:</span>
+            <span class="pill-value" style="color:#15803d; font-weight:700;">Consórcio Milho + Braquiária</span>
+          </div>
+          <div class="map-pill">
+            <span class="pill-icon">📌</span>
+            <span class="pill-label">Marcos Técnicos:</span>
+            <strong class="pill-value">${pontos.length} ponto(s)</strong>
           </div>
         </div>
       </div>
@@ -7827,9 +7854,10 @@ const AmadeusViews = {
       pontosMarcados: []
     };
 
+    const zoomInicial = (mapaArea.zoom && mapaArea.zoom >= 16) ? mapaArea.zoom : 17;
     const map = L.map('sipa-mapa-leaf', {
       center: [mapaArea.lat, mapaArea.lng],
-      zoom: mapaArea.zoom || 17,
+      zoom: zoomInicial,
       zoomControl: true,
       attributionControl: true
     });
@@ -7864,7 +7892,51 @@ const AmadeusViews = {
       popupAnchor: [0, -20]
     });
 
-    // Marcador Central da Gleba Experimental
+    // Polígono Agronômico da Gleba Experimental (1,50 ha)
+    const cLat = mapaArea.lat;
+    const cLng = mapaArea.lng;
+    const dLat = 0.00062;
+    const dLng = 0.00075;
+    const poligonoGleba = [
+      [cLat + dLat, cLng - dLng],
+      [cLat + dLat * 0.94, cLng + dLng * 0.96],
+      [cLat - dLat * 0.98, cLng + dLng],
+      [cLat - dLat, cLng - dLng * 0.95]
+    ];
+
+    const glebaLayer = L.polygon(poligonoGleba, {
+      color: '#15803d',
+      weight: 2.8,
+      fillColor: '#22c55e',
+      fillOpacity: 0.22,
+      dashArray: '5, 5'
+    }).addTo(map);
+
+    glebaLayer.bindPopup(`
+      <div style="font-size:0.86rem; line-height:1.45; min-width:220px; padding:0.2rem;">
+        <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+          <span style="font-size:1.1rem;">🌱</span>
+          <strong style="color:#15803d; font-size:0.95rem;">Gleba SPD 01 (1,50 ha)</strong>
+        </div>
+        <div style="font-size:0.78rem; color:#475569; margin-bottom:0.4rem;">
+          Consórcio Milho Grão + Brachiaria ruziziensis
+        </div>
+        <div style="font-size:0.8rem; border-top:1px solid #e2e8f0; padding-top:0.4rem; color:#334155;">
+          📐 <strong>Área Total:</strong> ${mapaArea.areaHa || 1.5} ha (15.000 m²)<br/>
+          📏 <strong>Perímetro:</strong> ~${mapaArea.perimetroM || 520} m lineares<br/>
+          🌾 <strong>Manejo:</strong> Plantio Direto na Palhada (SPD) &amp; ILP
+        </div>
+      </div>
+    `);
+
+    glebaLayer.on('mouseover', function () {
+      this.setStyle({ fillOpacity: 0.38, weight: 3.5 });
+    });
+    glebaLayer.on('mouseout', function () {
+      this.setStyle({ fillOpacity: 0.22, weight: 2.8 });
+    });
+
+    // Marcador Central da Gleba Experimental (sem popup aberto por padrão)
     const markerSede = L.marker([mapaArea.lat, mapaArea.lng], {
       icon: criarIcone('🌱', '#166534')
     }).addTo(map);
@@ -7882,17 +7954,21 @@ const AmadeusViews = {
           </a>
         </div>
       </div>
-    `).openPopup();
+    `);
 
-    // Raio visual circular aproximado da gleba experimental (70 metros de raio ~ 1.5 ha)
-    L.circle([mapaArea.lat, mapaArea.lng], {
-      color: '#16a34a',
-      fillColor: '#22c55e',
-      fillOpacity: 0.16,
-      weight: 2.5,
-      dashArray: '6, 6',
-      radius: 68
-    }).addTo(map);
+    // Badge Flutuante de Identificação da Gleba
+    const glebaInfoControl = L.control({ position: 'bottomleft' });
+    glebaInfoControl.onAdd = function () {
+      const div = L.DomUtil.create('div', 'gleba-map-hud');
+      div.innerHTML = `
+        <div style="background:rgba(255, 255, 255, 0.94); backdrop-filter:blur(6px); border:1px solid rgba(226, 232, 240, 0.95); padding:0.4rem 0.75rem; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-size:0.76rem; color:#1e293b; display:flex; align-items:center; gap:0.45rem;">
+          <span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#22c55e; border:1px solid #15803d;"></span>
+          <strong>Gleba SPD 01</strong> · 1,50 ha (Milho + Braquiária)
+        </div>
+      `;
+      return div;
+    };
+    glebaInfoControl.addTo(map);
 
     // Marcadores adicionais (Pluviômetro, Piquetes, etc.)
     if (Array.isArray(mapaArea.pontosMarcados)) {
