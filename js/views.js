@@ -577,26 +577,15 @@ const AmadeusViews = {
           : ''
       }
 
-      <!-- Cabeçalho Clean de Boas-Vindas -->
-      <div class="page-header-clean">
-        <div>
-          <div class="page-title">
-            👋 Olá, ${u.nome.split(' ')[0]}
-            <span class="role-badge ${core.isAdmin() ? 'role-admin' : 'role-comum'}" style="font-size:0.72rem; font-weight:700;">
-              ${core.getRoleLabel(u.perfil)}
-            </span>
+      <!-- Cabeçalho Institucional Centralizado -->
+      <div class="page-header-clean" style="justify-content:center; text-align:center; padding:1.35rem 1.5rem;">
+        <div style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem;">
+          <div style="font-size:1.65rem; font-weight:800; color:#15803d; letter-spacing:-0.02em; line-height:1.2;">
+            Amadeus
           </div>
-          <div class="page-subtitle">
-            AMADEUS · Gestão Agroecológica &amp; Sistema de Plantio Direto (Campus IF Baiano)
+          <div style="font-size:0.95rem; color:#475569; font-weight:500; line-height:1.4;">
+            Ambiente de Aprendizado e Desenvolvimento em SIPA na Bahia · IF Baiano
           </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-          <span class="status-pill" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:700; font-size:0.76rem;">
-            🟢 Safra 2025/2026 Ativa
-          </span>
-          <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.navegar('sipa')" style="font-size:0.8rem;">
-            🌱 Acessar SIPA
-          </button>
         </div>
       </div>
 
