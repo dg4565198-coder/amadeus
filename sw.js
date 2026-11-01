@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amadeus-pwa-v33';
+const CACHE_NAME = 'amadeus-pwa-v34';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
