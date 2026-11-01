@@ -71,6 +71,11 @@ const AmadeusCore = {
       if (!Array.isArray(a.pesagens)) {
         a.pesagens = a.pesagens && typeof a.pesagens === 'object' ? Object.values(a.pesagens) : [];
       }
+      if (!a.categoria) {
+        if (a.raca && a.raca.toLowerCase().includes('novilha')) a.categoria = 'Novilha';
+        else if (a.raca && a.raca.toLowerCase().includes('bezerro')) a.categoria = 'Bezerro(a)';
+        else a.categoria = a.sexo === 'Fêmea' ? 'Novilha' : 'Garrote';
+      }
     });
 
     // Sub-estruturas do Módulo de Animais: Checklist de Sanidade & Monitoramento de Pastagens/Bebedouros
@@ -1353,12 +1358,20 @@ const AmadeusCore = {
       <div class="meta-box">
         <strong>Identificação / Brinco:</strong> ${animal.brinco} &nbsp;|&nbsp;
         <strong>Nome:</strong> ${animal.nome} &nbsp;|&nbsp;
-        <strong>Espécie/Raça:</strong> ${animal.especie} (${animal.raca}) &nbsp;|&nbsp;
-        <strong>Sexo:</strong> ${animal.sexo}<br/>
-        <strong>Data de Nascimento:</strong> ${this.formatDateBR(animal.dataNascimento)} &nbsp;|&nbsp;
-        <strong>Lote / Local:</strong> ${animal.lote} &nbsp;|&nbsp;
-        <strong>Status:</strong> ${animal.status}<br/>
-        <strong>Observações Zootécnicas:</strong> ${animal.observacoes || 'Sem observações adicionais.'}
+        <strong>Categoria Zootécnica:</strong> ${animal.categoria || 'Não informada'} &nbsp;|&nbsp;
+        <strong>Sexo:</strong> ${animal.sexo || 'Não informado'}<br/>
+        <strong>Espécie/Raça:</strong> ${animal.especie} (${animal.raca || 'Sem raça def.'}) &nbsp;|&nbsp;
+        <strong>Pelagem:</strong> ${animal.pelagem || 'Padrão'} &nbsp;|&nbsp;
+        <strong>RFID/SISBOV:</strong> ${animal.rfid || 'Não possui'}<br/>
+        <strong>Data de Nascimento:</strong> ${this.formatDateBR(animal.dataNascimento) || 'Não informada'} &nbsp;|&nbsp;
+        <strong>Registro Genealógico (RGN):</strong> ${animal.registro || '—'} &nbsp;|&nbsp;
+        <strong>Origem:</strong> ${animal.origem || 'Cria Própria'}<br/>
+        <strong>Pai / Touro:</strong> ${animal.pai || 'Não informado'} &nbsp;|&nbsp;
+        <strong>Mãe / Matriz:</strong> ${animal.mae || 'Não informada'}<br/>
+        <strong>Lote / Local:</strong> ${animal.lote || 'Geral'} &nbsp;|&nbsp;
+        <strong>Piquete:</strong> ${animal.piqueteNome || 'Não definido'} &nbsp;|&nbsp;
+        <strong>Status:</strong> ${animal.status || 'Ativo'}<br/>
+        <strong>Observações Zootécnicas &amp; Sanitárias:</strong> ${animal.observacoes || 'Sem observações adicionais.'}
       </div>
       <div class="kpi-row">
         <div class="kpi-item"><span>Peso Inicial</span><strong>${m.pesoInicial.toFixed(1)} kg</strong></div>
