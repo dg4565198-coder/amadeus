@@ -3284,6 +3284,7 @@ const AmadeusViews = {
   },
 
   buscaAnimalTermo: '',
+  mostrarListaFiltrada: false,
   gmdChartMode: 'spline', // 'spline' | 'bars'
 
   aoDigitarBuscaAnimal(valor) {
@@ -3295,6 +3296,18 @@ const AmadeusViews = {
     if (input) {
       this.buscaAnimalTermo = input.value.trim();
     }
+    this.mostrarListaFiltrada = true;
+    this.renderMainContent();
+  },
+
+  toggleFiltrarAnimais() {
+    this.mostrarListaFiltrada = !this.mostrarListaFiltrada;
+    this.renderMainContent();
+  },
+
+  fecharListaFiltrada() {
+    this.mostrarListaFiltrada = false;
+    this.buscaAnimalTermo = '';
     this.renderMainContent();
   },
 
@@ -3620,15 +3633,20 @@ const AmadeusViews = {
     };
 
     // SE NENHUM ANIMAL FOI SELECIONADO/CLICADO:
-    // Exibe apenas a Central de Busca e a lista de animais para o usuario pesquisar e escolher!
+    // Exibe apenas a barra de busca e o botao FILTRAR (sem quadrados/fichas poluidas!)
     if (!selecionado) {
+      const deveMostrarLista = this.mostrarListaFiltrada || termo.length > 0;
+      const animaisOrdenados = [...animaisFiltrados].sort((a, b) =>
+        (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' })
+      );
+
       return `
         <div class="card">
           <div class="card-header" style="flex-wrap:wrap; gap:0.6rem;">
             <div>
               <div class="card-title">🔍 Busca &amp; Análise Individual de Animal</div>
               <div style="font-size:0.82rem; color:var(--slate-600); margin-top:0.2rem;">
-                Pesquise por <strong>número de brinco</strong> ou <strong>nome</strong> para carregar o gráfico de telemetria e o histórico zootécnico.
+                Pesquise por <strong>número de brinco</strong> ou <strong>nome</strong>, ou use o botão <strong>Filtrar</strong> para listar o rebanho em ordem alfabética.
               </div>
             </div>
             <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -3643,7 +3661,7 @@ const AmadeusViews = {
             </div>
           </div>
 
-          <!-- Barra de Pesquisa Proeminente -->
+          <!-- Barra de Pesquisa & Botão Filtrar -->
           <div class="gmd-search-stage">
             <div class="gmd-search-bar-wrap">
               <div class="gmd-search-input-box">
@@ -3652,7 +3670,7 @@ const AmadeusViews = {
                   type="text"
                   id="gmd-busca-input"
                   class="gmd-search-input"
-                  placeholder="Buscar animal por Brinco (ex: EXP-01) ou Nome (ex: Boreal)..."
+                  placeholder="Buscar por Brinco (ex: EXP-01) ou Nome (ex: Boreal)..."
                   value="${this.buscaAnimalTermo || ''}"
                   oninput="AmadeusViews.aoDigitarBuscaAnimal(this.value)"
                   onkeydown="if(event.key==='Enter') AmadeusViews.executarBuscaAnimal()"
@@ -3663,59 +3681,88 @@ const AmadeusViews = {
                     : ''
                 }
               </div>
-              <button class="btn btn-primary" onclick="AmadeusViews.executarBuscaAnimal()" style="padding:0.72rem 1.25rem;">
-                ⚡ Pesquisar Animal
+              <button class="btn btn-primary" onclick="AmadeusViews.executarBuscaAnimal()" style="white-space:nowrap; padding:0.72rem 1.25rem;">
+                ⚡ Pesquisar
+              </button>
+              <button class="btn ${this.mostrarListaFiltrada ? 'btn-amber' : 'btn-secondary'}" onclick="AmadeusViews.toggleFiltrarAnimais()" style="white-space:nowrap; padding:0.72rem 1.15rem;" title="Listar animais em ordem alfabética de nome">
+                ${this.mostrarListaFiltrada ? '✕ Ocultar Filtro' : '📑 Filtrar (A-Z)'}
               </button>
             </div>
 
-            <!-- Grade de Animais Encontrados -->
+            <!-- Lista em Ordem Alfabética (Um debaixo do outro) OU Mensagem de Orientação -->
             ${
-              animaisFiltrados.length === 0
+              deveMostrarLista
                 ? `
-              <div class="empty-state">
-                <div class="empty-state-icon">🔍</div>
-                <div class="empty-state-title">Nenhum animal encontrado para "${this.buscaAnimalTermo}"</div>
-                <div class="empty-state-sub">Verifique se o brinco ou nome foi digitado corretamente ou limpe o filtro para ver todos.</div>
-                <button class="btn btn-secondary" onclick="AmadeusViews.limparBuscaAnimal()">Limpar Pesquisa</button>
-              </div>
+              ${
+                animaisOrdenados.length === 0
+                  ? `
+                <div class="empty-state">
+                  <div class="empty-state-icon">🔍</div>
+                  <div class="empty-state-title">Nenhum animal encontrado para "${this.buscaAnimalTermo}"</div>
+                  <div class="empty-state-sub">Verifique se o brinco ou nome foi digitado corretamente.</div>
+                  <button class="btn btn-secondary" onclick="AmadeusViews.limparBuscaAnimal()">Limpar Filtro</button>
+                </div>
+              `
+                  : `
+                <div style="font-size:0.78rem; font-weight:700; color:var(--slate-500); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.6rem; display:flex; justify-content:space-between; align-items:center;">
+                  <span>📋 ${animaisOrdenados.length} ${animaisOrdenados.length === 1 ? 'animal listado' : 'animais listados'} em ordem alfabética (Clique no animal para abrir os dados completos):</span>
+                  <button class="btn btn-sm btn-secondary" onclick="AmadeusViews.fecharListaFiltrada()" style="font-size:0.74rem; padding:0.2rem 0.6rem;">Fechar Lista ✕</button>
+                </div>
+
+                <div class="gmd-list-view">
+                  ${animaisOrdenados
+                    .map((a) => {
+                      const met = core.calcularMetricasAnimal(a);
+                      const gmdVal = met.gmdGlobal;
+                      const gmdClass = gmdVal > 0 ? 'pos' : gmdVal < 0 ? 'neg' : 'neu';
+                      const gmdSymbol = gmdVal > 0 ? '▲' : gmdVal < 0 ? '▼' : '●';
+                      return `
+                        <div class="gmd-list-item" onclick="AmadeusViews.selecionarAnimalParaGrafico('${a.id}')" title="Clique para abrir todos os dados e o gráfico de ${a.nome}">
+                          <div class="gmd-list-main">
+                            <span class="gmd-list-tag">${a.brinco}</span>
+                            <span class="gmd-list-name" style="color:var(--green-900); text-decoration:underline; text-underline-offset:3px;">
+                              ${a.nome}
+                            </span>
+                            <span class="gmd-list-sub">
+                              ${getSpeciesIcon(a.especie)} ${a.especie} (${a.raca || 'Sem raça def.'}) · Lote: <strong>${a.lote || 'Geral'}</strong>
+                            </span>
+                          </div>
+
+                          <div class="gmd-list-stats">
+                            <div class="gmd-list-weight">
+                              ${met.pesoAtual.toFixed(1)} kg
+                              <span style="font-size:0.75rem; color:var(--slate-500); font-weight:normal;">(${met.historicoDetalhado.length} pesagens)</span>
+                            </div>
+                            <div class="gmd-card-gmd ${gmdClass}">
+                              ${gmdSymbol} GMD: ${formatGmd(gmdVal)} kg/d
+                            </div>
+                          </div>
+
+                          <div class="gmd-list-action">
+                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); AmadeusViews.selecionarAnimalParaGrafico('${a.id}')">
+                              📈 Ver Dados &amp; Gráfico →
+                            </button>
+                          </div>
+                        </div>
+                      `;
+                    })
+                    .join('')}
+                </div>
+              `
+              }
             `
                 : `
-              <div style="font-size:0.78rem; font-weight:700; color:var(--slate-500); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.5rem;">
-                ${animaisFiltrados.length} ${animaisFiltrados.length === 1 ? 'animal disponível' : 'animais disponíveis'} no rebanho (Clique em um animal para gerar o gráfico):
-              </div>
-              <div class="gmd-animal-grid">
-                ${animaisFiltrados
-                  .map((a) => {
-                    const met = core.calcularMetricasAnimal(a);
-                    const gmdVal = met.gmdGlobal;
-                    const gmdClass = gmdVal > 0 ? 'pos' : gmdVal < 0 ? 'neg' : 'neu';
-                    const gmdSymbol = gmdVal > 0 ? '▲' : gmdVal < 0 ? '▼' : '●';
-                    return `
-                      <div class="gmd-animal-card" onclick="AmadeusViews.selecionarAnimalParaGrafico('${a.id}')">
-                        <div>
-                          <div class="gmd-card-top">
-                            <span class="gmd-card-tag">${a.brinco}</span>
-                            <span class="gmd-card-species">${getSpeciesIcon(a.especie)} ${a.especie}</span>
-                          </div>
-                          <div class="gmd-card-name" style="margin-top:0.5rem;">${a.nome}</div>
-                          <div class="gmd-card-metrics" style="margin-top:0.6rem;">
-                            <div><strong>Raça:</strong> ${a.raca || 'Sem raça def.'}</div>
-                            <div><strong>Lote:</strong> ${a.lote || 'Geral'}</div>
-                            <div><strong>Peso Atual:</strong> ${met.pesoAtual.toFixed(1)} kg (${met.historicoDetalhado.length} pesagens)</div>
-                          </div>
-                        </div>
-                        <div class="gmd-card-footer">
-                          <div class="gmd-card-gmd ${gmdClass}">
-                            ${gmdSymbol} GMD: ${formatGmd(gmdVal)} kg/d
-                          </div>
-                          <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); AmadeusViews.selecionarAnimalParaGrafico('${a.id}')">
-                            📈 Ver Gráfico →
-                          </button>
-                        </div>
-                      </div>
-                    `;
-                  })
-                  .join('')}
+              <div class="empty-state-clean" style="border:1.5px dashed var(--slate-300); background:#f8fafc; border-radius:12px; padding:2.2rem 1.5rem; text-align:center;">
+                <div style="font-size:2rem; margin-bottom:0.4rem;">🐄</div>
+                <div style="font-size:1.05rem; font-weight:700; color:var(--slate-800); margin-bottom:0.3rem;">
+                  Pronto para analisar seu rebanho
+                </div>
+                <div style="font-size:0.86rem; color:var(--slate-600); max-width:520px; margin:0 auto 1.15rem auto; line-height:1.55;">
+                  Digite o <strong>brinco</strong> ou <strong>nome</strong> na caixa acima e clique em <strong>Pesquisar</strong>, ou clique no botão <strong>Filtrar (A-Z)</strong> para listar os animais um debaixo do outro em ordem alfabética.
+                </div>
+                <button class="btn btn-secondary" onclick="AmadeusViews.toggleFiltrarAnimais()" style="padding:0.55rem 1.25rem;">
+                  📑 Listar Animais em Ordem Alfabética (Filtrar)
+                </button>
               </div>
             `
             }
