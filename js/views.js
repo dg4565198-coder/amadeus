@@ -3812,15 +3812,18 @@ const AmadeusViews = {
               ${getSpeciesIcon(selecionado.especie)}
             </div>
             <div class="gmd-hero-info">
-              <div class="gmd-hero-title">
+              <div class="gmd-hero-title" style="display:flex; align-items:center; gap:0.55rem; flex-wrap:wrap;">
                 <span class="gmd-hero-tag">${selecionado.brinco}</span>
                 <span>${selecionado.nome}</span>
+                ${selecionado.categoria ? `<span class="badge" style="background:#0284c7; color:#fff; font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:6px; font-weight:700;">🏷️ ${selecionado.categoria}</span>` : ''}
               </div>
               <div class="gmd-hero-meta">
                 <span><strong>Espécie/Raça:</strong> ${selecionado.especie} (${selecionado.raca || 'Sem raça def.'})</span>
                 <span>•</span>
                 <span><strong>Lote:</strong> ${selecionado.lote || 'Geral'}</span>
                 ${selecionado.sexo ? `<span>•</span><span><strong>Sexo:</strong> ${selecionado.sexo}</span>` : ''}
+                ${selecionado.piqueteNome ? `<span>•</span><span><strong>Piquete:</strong> ${selecionado.piqueteNome}</span>` : ''}
+                ${selecionado.rfid ? `<span>•</span><span><strong>RFID/SISBOV:</strong> <code>${selecionado.rfid}</code></span>` : ''}
               </div>
             </div>
           </div>
@@ -3834,6 +3837,30 @@ const AmadeusViews = {
                 : `<div class="gmd-badge-pill neutral">● Peso Estável (${formatGmd(m.gmdGlobal)} kg/d)</div>`
             }
           </div>
+        </div>
+
+        <!-- Painel Zootécnico & Genealogia Completa -->
+        <div class="card" style="margin-top:0.75rem; margin-bottom:1rem; padding:0.9rem 1.15rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+            <div style="font-weight:700; font-size:0.88rem; color:#1e293b; display:flex; align-items:center; gap:0.4rem;">
+              <span>🧬 Ficha Zootécnica &amp; Genealogia</span>
+              <span style="font-size:0.75rem; color:#64748b; font-weight:normal;">(Registro Completo)</span>
+            </div>
+            ${isAdmin ? `<button class="btn btn-xs btn-outline-secondary" onclick="AmadeusViews.abrirModalAnimal('${selecionado.id}')" style="font-size:0.75rem; padding:0.2rem 0.55rem;">✏️ Editar Ficha</button>` : ''}
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.6rem; font-size:0.82rem; color:#334155;">
+            <div><strong>Categoria:</strong> ${selecionado.categoria || '<span style="color:#94a3b8;">Não informada</span>'}</div>
+            <div><strong>Pelagem:</strong> ${selecionado.pelagem || '<span style="color:#94a3b8;">Não informada</span>'}</div>
+            <div><strong>Nascimento:</strong> ${selecionado.dataNascimento ? AmadeusCore.formatDateBR(selecionado.dataNascimento) : '<span style="color:#94a3b8;">Não informado</span>'}</div>
+            <div><strong>Registro Genealógico:</strong> ${selecionado.registro || '<span style="color:#94a3b8;">—</span>'}</div>
+            <div><strong>Pai / Touro:</strong> ${selecionado.pai || '<span style="color:#94a3b8;">Não informado</span>'}</div>
+            <div><strong>Mãe / Matriz:</strong> ${selecionado.mae || '<span style="color:#94a3b8;">Não informada</span>'}</div>
+            <div><strong>Origem:</strong> ${selecionado.origem || '<span style="color:#94a3b8;">Cria Própria</span>'}</div>
+            <div><strong>Finalidade:</strong> ${selecionado.finalidade || '<span style="color:#94a3b8;">Corte</span>'}</div>
+            ${selecionado.valorCompra ? `<div><strong>Valor Compra:</strong> R$ ${Number(selecionado.valorCompra).toFixed(2)}</div>` : ''}
+            <div><strong>Piquete Atual:</strong> ${selecionado.piqueteNome || selecionado.lote || '<span style="color:#94a3b8;">Pasto Geral</span>'}</div>
+          </div>
+          ${selecionado.observacoes ? `<div style="margin-top:0.6rem; padding-top:0.5rem; border-top:1px dashed #cbd5e1; font-size:0.8rem; color:#475569;"><strong>Notas Sanitárias &amp; Manejo:</strong> ${selecionado.observacoes}</div>` : ''}
         </div>
 
         <!-- KPIs Zootécnicos -->
@@ -4789,6 +4816,15 @@ const AmadeusViews = {
     `;
   },
 
+  trocarAbaModalAnimal(abaId) {
+    document.querySelectorAll('.modal-tab-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.modal-tab-pane').forEach((p) => p.classList.remove('active'));
+    const btn = document.getElementById('tab-btn-' + abaId);
+    const pane = document.getElementById('tab-pane-' + abaId);
+    if (btn) btn.classList.add('active');
+    if (pane) pane.classList.add('active');
+  },
+
   abrirModalAnimal(animalId = null) {
     const core = window.AmadeusCore;
     if (animalId && !core.requireAdmin('editar os dados de um animal já cadastrado')) return;
@@ -4798,118 +4834,414 @@ const AmadeusViews = {
     const item = existente || {
       brinco: '',
       nome: '',
-      especie: 'Bovino',
-      raca: 'Nelore / Mestiço',
       sexo: 'Macho',
+      categoria: 'Garrote',
+      especie: 'Bovino',
+      raca: '',
+      pelagem: '',
+      rfid: '',
+      dataNascimento: '',
+      registro: '',
+      pai: '',
+      mae: '',
+      origem: 'Cria Própria / Nascido na Fazenda',
+      finalidade: 'Corte / Carne',
+      valorCompra: '',
+      dataEntrada: hoje,
+      piqueteId: '',
+      piqueteNome: '',
       lote: 'Lote Experimental 01',
+      status: 'Ativo',
       observacoes: ''
     };
 
+    const pastagens = core.db.pastagens || [];
+
     this.abrirModalGenerico(
-      existente ? `✏️ Editar Animal — ${item.brinco} (Admin)` : '➕ Cadastrar Animal no Controle Zootécnico',
+      existente ? `✏️ Editar Ficha Zootécnica — ${item.brinco} (${item.nome})` : '➕ Cadastrar Animal no Rebanho (Ficha Zootécnica)',
       `
-        <form onsubmit="AmadeusViews.salvarAnimal(event, '${existente ? existente.id : ''}')">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Brinco / Identificação *</label>
-              <input type="text" id="ani-brinco" class="form-control" value="${item.brinco}" placeholder="Ex.: BR-105" required />
-            </div>
-            <div class="form-group">
-              <label>Nome do Animal *</label>
-              <input type="text" id="ani-nome" class="form-control" value="${item.nome}" required />
-            </div>
-            <div class="form-group">
-              <label>Espécie *</label>
-              <select id="ani-esp" class="form-control">
-                <option value="Bovino" ${item.especie === 'Bovino' ? 'selected' : ''}>Bovino</option>
-                <option value="Ovino" ${item.especie === 'Ovino' ? 'selected' : ''}>Ovino</option>
-                <option value="Caprino" ${item.especie === 'Caprino' ? 'selected' : ''}>Caprino</option>
-                <option value="Suíno" ${item.especie === 'Suíno' ? 'selected' : ''}>Suíno</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Raça *</label>
-              <input type="text" id="ani-raca" class="form-control" value="${item.raca}" required />
-            </div>
-            <div class="form-group">
-              <label>Sexo</label>
-              <select id="ani-sexo" class="form-control">
-                <option value="Macho" ${item.sexo === 'Macho' ? 'selected' : ''}>Macho</option>
-                <option value="Fêmea" ${item.sexo === 'Fêmea' ? 'selected' : ''}>Fêmea</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Lote / Piquete *</label>
-              <input type="text" id="ani-lote" class="form-control" value="${item.lote}" required />
-            </div>
-            ${
-              !existente
-                ? `
-              <div class="form-group">
-                <label>Data da 1ª Pesagem *</label>
-                <input type="date" id="ani-dtpeso" class="form-control" value="${hoje}" required />
+        <!-- Navegação por Abas Limpas e Profissionais -->
+        <div class="modal-tabs">
+          <button type="button" class="modal-tab-btn active" id="tab-btn-essencial" onclick="AmadeusViews.trocarAbaModalAnimal('essencial')">
+            📌 1. Identificação Essencial <span style="background:#fee2e2; color:#b91c1c; font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px; margin-left:4px;">Obrigatório *</span>
+          </button>
+          <button type="button" class="modal-tab-btn" id="tab-btn-genealogia" onclick="AmadeusViews.trocarAbaModalAnimal('genealogia')">
+            🧬 2. Genealogia &amp; Origem <span style="color:#64748b; font-size:0.72rem; margin-left:4px;">(Opcional)</span>
+          </button>
+          <button type="button" class="modal-tab-btn" id="tab-btn-manejo" onclick="AmadeusViews.trocarAbaModalAnimal('manejo')">
+            🌾 3. Manejo, Pasto &amp; Pesagem <span style="color:#64748b; font-size:0.72rem; margin-left:4px;">(Opcional)</span>
+          </button>
+        </div>
+
+        <form id="form-cadastro-animal" onsubmit="AmadeusViews.salvarAnimal(event, '${existente ? existente.id : ''}')">
+          
+          <!-- ABA 1: IDENTIFICAÇÃO ESSENCIAL (ÚNICA COM CAMPOS OBRIGATÓRIOS) -->
+          <div class="modal-tab-pane active" id="tab-pane-essencial">
+            <div class="alert-banner" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; margin-bottom:1.15rem; padding:0.7rem 0.95rem; font-size:0.83rem; border-radius:8px; display:flex; align-items:center; gap:0.5rem;">
+              <span style="font-size:1.1rem;">ℹ️</span>
+              <div>
+                <strong>Atenção:</strong> Apenas <strong>Número/Brinco, Nome, Sexo e Categoria</strong> são obrigatórios. Todas as demais informações zootécnicas são opcionais e você só preenche o que souber.
               </div>
+            </div>
+
+            <div class="form-grid">
               <div class="form-group">
-                <label>Peso Inicial (kg) *</label>
-                <input type="number" step="0.1" min="1" id="ani-peso" class="form-control" value="250" required />
+                <label>Número / Brinco de Identificação *</label>
+                <input type="text" id="ani-brinco" class="form-control" value="${item.brinco || ''}" placeholder="Ex.: BR-105, 042, EXP-05" required autofocus />
+                <small style="color:#64748b; font-size:0.75rem;">Identificação física visível no animal</small>
               </div>
-            `
-                : ''
-            }
+
+              <div class="form-group">
+                <label>Nome do Animal *</label>
+                <input type="text" id="ani-nome" class="form-control" value="${item.nome || ''}" placeholder="Ex.: Boreal, Estrela, Campeão" required />
+                <small style="color:#64748b; font-size:0.75rem;">Nome individual do animal</small>
+              </div>
+
+              <div class="form-group">
+                <label>Sexo do Animal *</label>
+                <select id="ani-sexo" class="form-control" required>
+                  <option value="">Selecione o sexo...</option>
+                  <option value="Macho" ${item.sexo === 'Macho' ? 'selected' : ''}>Macho</option>
+                  <option value="Fêmea" ${item.sexo === 'Fêmea' ? 'selected' : ''}>Fêmea</option>
+                </select>
+                <small style="color:#64748b; font-size:0.75rem;">Fundamental para o cálculo de índices zootécnicos</small>
+              </div>
+
+              <div class="form-group">
+                <label>Categoria Zootécnica *</label>
+                <select id="ani-categoria" class="form-control" required>
+                  <option value="">Selecione a categoria...</option>
+                  <option value="Bezerro(a)" ${item.categoria === 'Bezerro(a)' ? 'selected' : ''}>Bezerro(a) (Fase de cria &lt; 8 meses)</option>
+                  <option value="Desmama" ${item.categoria === 'Desmama' ? 'selected' : ''}>Desmama / Recria Inicial (8 a 12 meses)</option>
+                  <option value="Garrote" ${item.categoria === 'Garrote' ? 'selected' : ''}>Garrote (Macho em recria 12 a 24 meses)</option>
+                  <option value="Novilha" ${item.categoria === 'Novilha' ? 'selected' : ''}>Novilha (Fêmea em recria 12 a 24 meses)</option>
+                  <option value="Boi Gordo" ${item.categoria === 'Boi Gordo' ? 'selected' : ''}>Boi Gordo / Terminação (&gt; 24 meses)</option>
+                  <option value="Vaca / Matriz" ${item.categoria === 'Vaca / Matriz' ? 'selected' : ''}>Vaca / Matriz (Em reprodução / lactação)</option>
+                  <option value="Touro / Reprodutor" ${item.categoria === 'Touro / Reprodutor' ? 'selected' : ''}>Touro / Reprodutor</option>
+                  <option value="Descarte" ${item.categoria === 'Descarte' ? 'selected' : ''}>Descarte / Refugo comercial</option>
+                  <option value="Outra" ${item.categoria === 'Outra' ? 'selected' : ''}>Outra Categoria</option>
+                </select>
+                <small style="color:#64748b; font-size:0.75rem;">Essencial para agrupamento de lotes e metas de GMD</small>
+              </div>
+
+              <div class="form-group">
+                <label>Espécie <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <select id="ani-esp" class="form-control">
+                  <option value="Bovino" ${item.especie === 'Bovino' || !item.especie ? 'selected' : ''}>Bovino</option>
+                  <option value="Ovino" ${item.especie === 'Ovino' ? 'selected' : ''}>Ovino</option>
+                  <option value="Caprino" ${item.especie === 'Caprino' ? 'selected' : ''}>Caprino</option>
+                  <option value="Suíno" ${item.especie === 'Suíno' ? 'selected' : ''}>Suíno</option>
+                  <option value="Equino" ${item.especie === 'Equino' ? 'selected' : ''}>Equino</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Raça / Composição Genética <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="text" id="ani-raca" list="lista-racas" class="form-control" value="${item.raca || ''}" placeholder="Ex.: Nelore, Angus, Senepol, Girolando, Cruzamento..." />
+                <datalist id="lista-racas">
+                  <option value="Nelore" />
+                  <option value="Nelore Mocho" />
+                  <option value="Angus" />
+                  <option value="Senepol" />
+                  <option value="Girolando" />
+                  <option value="Guzerá" />
+                  <option value="Brahman" />
+                  <option value="Brangus" />
+                  <option value="Tabapuã" />
+                  <option value="Holandês" />
+                  <option value="Cruzamento Industrial" />
+                  <option value="Mestiço" />
+                </datalist>
+              </div>
+
+              <div class="form-group">
+                <label>Pelagem / Características Visuais <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="text" id="ani-pelagem" class="form-control" value="${item.pelagem || ''}" placeholder="Ex.: Branca, Vermelha, Mocho, Pintada..." />
+              </div>
+
+              <div class="form-group">
+                <label>Brinco Eletrônico / Chip RFID / SISBOV <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="text" id="ani-rfid" class="form-control" value="${item.rfid || ''}" placeholder="Ex.: 982.000123456789 ou SISBOV" />
+              </div>
+            </div>
+
+            <div style="margin-top:1.25rem; display:flex; justify-content:space-between; align-items:center; padding-top:0.85rem; border-top:1px solid #e2e8f0; flex-wrap:wrap; gap:0.5rem;">
+              <span style="font-size:0.8rem; color:#64748b;">💡 Você já pode salvar agora ou avançar nas abas para detalhar.</span>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusViews.trocarAbaModalAnimal('genealogia')">
+                Próximo: Genealogia &amp; Origem ➔
+              </button>
+            </div>
           </div>
-          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">Cancelar</button>
-            <button type="submit" class="btn btn-primary">💾 Salvar Animal</button>
+
+          <!-- ABA 2: GENEALOGIA & ORIGEM (OPCIONAL) -->
+          <div class="modal-tab-pane" id="tab-pane-genealogia">
+            <div class="alert-banner" style="background:#f8fafc; border:1px solid #e2e8f0; color:#475569; margin-bottom:1.15rem; padding:0.7rem 0.95rem; font-size:0.83rem; border-radius:8px;">
+              🧬 <strong>Genealogia &amp; Aquisição:</strong> Estes campos são complementares. Preencha apenas as informações que possuir.
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Data de Nascimento <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="date" id="ani-dtnasc" class="form-control" value="${item.dataNascimento || ''}" />
+              </div>
+
+              <div class="form-group">
+                <label>Registro Genealógico / RGN / RGD <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="text" id="ani-registro" class="form-control" value="${item.registro || ''}" placeholder="Ex.: ABCZ 123456" />
+              </div>
+
+              <div class="form-group">
+                <label>Pai / Touro / Sêmen IA <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="text" id="ani-pai" class="form-control" value="${item.pai || ''}" placeholder="Ex.: REM Armador, Brinco 12, etc." />
+              </div>
+
+              <div class="form-group">
+                <label>Mãe / Matriz <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="text" id="ani-mae" class="form-control" value="${item.mae || ''}" placeholder="Ex.: Matriz 45, Vaca Estrela, etc." />
+              </div>
+
+              <div class="form-group">
+                <label>Origem do Animal <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <select id="ani-origem" class="form-control">
+                  <option value="Cria Própria / Nascido na Fazenda" ${item.origem === 'Cria Própria / Nascido na Fazenda' || !item.origem ? 'selected' : ''}>Cria Própria (Nascido na Fazenda)</option>
+                  <option value="Compra de Terceiros / Leilão" ${item.origem === 'Compra de Terceiros / Leilão' ? 'selected' : ''}>Compra de Terceiros / Leilão</option>
+                  <option value="Transferência de Outra Unidade" ${item.origem === 'Transferência de Outra Unidade' ? 'selected' : ''}>Transferência de Outra Unidade</option>
+                  <option value="Doação / Projeto de Pesquisa" ${item.origem === 'Doação / Projeto de Pesquisa' ? 'selected' : ''}>Doação / Projeto de Pesquisa</option>
+                  <option value="Não Informado" ${item.origem === 'Não Informado' ? 'selected' : ''}>Não Informado</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Aptidão / Finalidade <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <select id="ani-finalidade" class="form-control">
+                  <option value="Corte / Carne" ${item.finalidade === 'Corte / Carne' || !item.finalidade ? 'selected' : ''}>Corte / Produção de Carne</option>
+                  <option value="Leite" ${item.finalidade === 'Leite' ? 'selected' : ''}>Leite</option>
+                  <option value="Dupla Aptidão" ${item.finalidade === 'Dupla Aptidão' ? 'selected' : ''}>Dupla Aptidão</option>
+                  <option value="Reprodução / Genética P.O." ${item.finalidade === 'Reprodução / Genética P.O.' ? 'selected' : ''}>Reprodução / Genética P.O.</option>
+                  <option value="Ensino & Pesquisa SIPA" ${item.finalidade === 'Ensino & Pesquisa SIPA' ? 'selected' : ''}>Ensino &amp; Pesquisa SIPA</option>
+                  <option value="Outra" ${item.finalidade === 'Outra' ? 'selected' : ''}>Outra</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Valor de Compra (R$) <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="number" step="0.01" id="ani-valor" class="form-control" value="${item.valorCompra || ''}" placeholder="Ex.: 3200.00" />
+              </div>
+
+              <div class="form-group">
+                <label>Data de Entrada no Plantel <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="date" id="ani-dtentrada" class="form-control" value="${item.dataEntrada || hoje}" />
+              </div>
+            </div>
+
+            <div style="margin-top:1.25rem; display:flex; justify-content:space-between; align-items:center; padding-top:0.85rem; border-top:1px solid #e2e8f0; flex-wrap:wrap; gap:0.5rem;">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusViews.trocarAbaModalAnimal('essencial')">
+                ⬅ Voltar: Essencial
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusViews.trocarAbaModalAnimal('manejo')">
+                Próximo: Manejo &amp; Piquete ➔
+              </button>
+            </div>
+          </div>
+
+          <!-- ABA 3: MANEJO, PIQUETE & PESAGEM (OPCIONAL) -->
+          <div class="modal-tab-pane" id="tab-pane-manejo">
+            <div class="alert-banner" style="background:#f8fafc; border:1px solid #e2e8f0; color:#475569; margin-bottom:1.15rem; padding:0.7rem 0.95rem; font-size:0.83rem; border-radius:8px;">
+              🌾 <strong>Manejo &amp; Localização:</strong> Associe o animal aos piquetes cadastrados no AMADEUS e registre o peso inicial se já aferido.
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Piquete Atual (Módulo Pastagens) <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <select id="ani-piquete" class="form-control">
+                  <option value="">Sem piquete definido (Pasto Geral)</option>
+                  ${pastagens.map((p) => `
+                    <option value="${p.id}" ${item.piqueteId === p.id ? 'selected' : ''}>
+                      ${p.piqueteNome} (${p.tipoPastagem})
+                    </option>
+                  `).join('')}
+                </select>
+                <small style="color:#64748b; font-size:0.75rem;">Vincula à taxa de lotação do pasto</small>
+              </div>
+
+              <div class="form-group">
+                <label>Lote / Grupo de Manejo <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <input type="text" id="ani-lote" class="form-control" value="${item.lote || 'Lote Experimental 01'}" placeholder="Ex.: Lote Recria 01, Confinamento, Geral..." />
+              </div>
+
+              <div class="form-group">
+                <label>Status do Animal no Rebanho <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <select id="ani-status" class="form-control">
+                  <option value="Ativo" ${item.status === 'Ativo' || !item.status ? 'selected' : ''}>🟢 Ativo no Plantel</option>
+                  <option value="Em Pastejo / Recria" ${item.status === 'Em Pastejo / Recria' ? 'selected' : ''}>🌱 Em Pastejo / Recria</option>
+                  <option value="Em Engorda / Terminação" ${item.status === 'Em Engorda / Terminação' ? 'selected' : ''}>🥩 Em Engorda / Terminação</option>
+                  <option value="Em Reprodução" ${item.status === 'Em Reprodução' ? 'selected' : ''}>🧬 Em Reprodução</option>
+                  <option value="Quarentena / Tratamento" ${item.status === 'Quarentena / Tratamento' ? 'selected' : ''}>⚠️ Quarentena / Tratamento</option>
+                  <option value="Vendido" ${item.status === 'Vendido' ? 'selected' : ''}>💰 Vendido</option>
+                  <option value="Abatido" ${item.status === 'Abatido' ? 'selected' : ''}>🏭 Abatido</option>
+                  <option value="Óbito" ${item.status === 'Óbito' ? 'selected' : ''}>❌ Óbito</option>
+                </select>
+              </div>
+
+              ${
+                !existente
+                  ? `
+                <div class="form-group">
+                  <label>Data da 1ª Pesagem Inicial <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                  <input type="date" id="ani-dtpeso" class="form-control" value="${hoje}" />
+                </div>
+                <div class="form-group">
+                  <label>Peso Inicial (kg) <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                  <input type="number" step="0.1" min="1" id="ani-peso" class="form-control" placeholder="Ex.: 250 (deixe em branco se pesar depois)" />
+                  <small style="color:#64748b; font-size:0.75rem;">Se preenchido, gera o peso base de entrada</small>
+                </div>
+              `
+                  : ''
+              }
+
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Observações Zootécnicas &amp; Sanitárias <span style="color:#64748b; font-weight:normal;">(Opcional)</span></label>
+                <textarea id="ani-obs" class="form-control" rows="2" placeholder="Vacinas aplicadas, histórico de vermifugação, características zootécnicas, marcas a fogo...">${item.observacoes || ''}</textarea>
+              </div>
+            </div>
+
+            <div style="margin-top:1.25rem; display:flex; justify-content:flex-start; align-items:center; padding-top:0.85rem; border-top:1px solid #e2e8f0;">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusViews.trocarAbaModalAnimal('genealogia')">
+                ⬅ Voltar: Genealogia
+              </button>
+            </div>
+          </div>
+
+          <!-- BOTÕES DE AÇÃO FIXOS (DISPONÍVEIS DE QUALQUER ABA) -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem; padding-top:1rem; border-top:2px solid #e2e8f0; flex-wrap:wrap; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="AmadeusViews.fecharModal()">
+              ✕ Cancelar
+            </button>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <button type="submit" class="btn btn-primary" style="padding:0.6rem 1.4rem; font-weight:700;">
+                💾 Salvar Animal no Rebanho
+              </button>
+            </div>
           </div>
         </form>
-      `
+      `,
+      'modal-card-lg'
     );
   },
 
   salvarAnimal(e, idExistente) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const core = window.AmadeusCore;
     if (idExistente && !core.requireAdmin('editar animal')) return;
     if (!idExistente && !core.requireCreate('cadastrar animal')) return;
 
+    const brinco = document.getElementById('ani-brinco')?.value.trim();
+    const nome = document.getElementById('ani-nome')?.value.trim();
+    const sexo = document.getElementById('ani-sexo')?.value;
+    const categoria = document.getElementById('ani-categoria')?.value;
+
+    if (!brinco || !nome || !sexo || !categoria) {
+      this.trocarAbaModalAnimal('essencial');
+      if (!brinco) document.getElementById('ani-brinco')?.focus();
+      else if (!nome) document.getElementById('ani-nome')?.focus();
+      else if (!sexo) document.getElementById('ani-sexo')?.focus();
+      else if (!categoria) document.getElementById('ani-categoria')?.focus();
+      core.toast('Preencha os 4 campos obrigatórios: Brinco, Nome, Sexo e Categoria.', 'warning');
+      return;
+    }
+
+    const especie = document.getElementById('ani-esp')?.value || 'Bovino';
+    const raca = document.getElementById('ani-raca')?.value.trim() || '';
+    const pelagem = document.getElementById('ani-pelagem')?.value.trim() || '';
+    const rfid = document.getElementById('ani-rfid')?.value.trim() || '';
+
+    const dataNascimento = document.getElementById('ani-dtnasc')?.value || '';
+    const registro = document.getElementById('ani-registro')?.value.trim() || '';
+    const pai = document.getElementById('ani-pai')?.value.trim() || '';
+    const mae = document.getElementById('ani-mae')?.value.trim() || '';
+    const origem = document.getElementById('ani-origem')?.value || 'Cria Própria / Nascido na Fazenda';
+    const finalidade = document.getElementById('ani-finalidade')?.value || 'Corte / Carne';
+    const valorCompra = parseFloat(document.getElementById('ani-valor')?.value) || 0;
+    const dataEntrada = document.getElementById('ani-dtentrada')?.value || '';
+
+    const piqueteEl = document.getElementById('ani-piquete');
+    const piqueteId = piqueteEl?.value || '';
+    const piqueteNome = piqueteId && piqueteEl?.selectedIndex >= 0 ? piqueteEl.options[piqueteEl.selectedIndex].text.split('(')[0].trim() : '';
+    const lote = document.getElementById('ani-lote')?.value.trim() || 'Geral';
+    const status = document.getElementById('ani-status')?.value || 'Ativo';
+    const observacoes = document.getElementById('ani-obs')?.value.trim() || '';
+
     if (idExistente) {
       const a = core.db.animais.find((x) => x.id === idExistente);
       if (a) {
-        a.brinco = document.getElementById('ani-brinco').value.trim();
-        a.nome = document.getElementById('ani-nome').value.trim();
-        a.especie = document.getElementById('ani-esp').value;
-        a.raca = document.getElementById('ani-raca').value.trim();
-        a.sexo = document.getElementById('ani-sexo').value;
-        a.lote = document.getElementById('ani-lote').value.trim();
+        a.brinco = brinco;
+        a.nome = nome;
+        a.sexo = sexo;
+        a.categoria = categoria;
+        a.especie = especie;
+        a.raca = raca;
+        a.pelagem = pelagem;
+        a.rfid = rfid;
+        if (dataNascimento) a.dataNascimento = dataNascimento;
+        a.registro = registro;
+        a.pai = pai;
+        a.mae = mae;
+        a.origem = origem;
+        a.finalidade = finalidade;
+        a.valorCompra = valorCompra;
+        a.dataEntrada = dataEntrada || a.dataEntrada || '';
+        a.piqueteId = piqueteId;
+        a.piqueteNome = piqueteNome;
+        a.lote = lote;
+        a.status = status;
+        a.observacoes = observacoes;
       }
     } else {
       const id = 'ani-' + Date.now();
-      core.db.animais.push({
+      const novoAnimal = {
         id,
-        brinco: document.getElementById('ani-brinco').value.trim(),
-        nome: document.getElementById('ani-nome').value.trim(),
-        especie: document.getElementById('ani-esp').value,
-        raca: document.getElementById('ani-raca').value.trim(),
-        sexo: document.getElementById('ani-sexo').value,
-        dataNascimento: '2025-01-10',
-        lote: document.getElementById('ani-lote').value.trim(),
-        status: 'Ativo',
-        observacoes: 'Cadastrado no AMADEUS',
-        pesagens: [
-          {
-            id: 'p-' + Date.now(),
-            data: document.getElementById('ani-dtpeso').value,
-            peso: parseFloat(document.getElementById('ani-peso').value) || 100,
-            observacao: 'Pesagem inicial de entrada'
-          }
-        ]
-      });
+        brinco,
+        nome,
+        sexo,
+        categoria,
+        especie,
+        raca,
+        pelagem,
+        rfid,
+        dataNascimento: dataNascimento || new Date().toISOString().slice(0, 10),
+        registro,
+        pai,
+        mae,
+        origem,
+        finalidade,
+        valorCompra,
+        dataEntrada: dataEntrada || new Date().toISOString().slice(0, 10),
+        piqueteId,
+        piqueteNome,
+        lote,
+        status,
+        observacoes,
+        pesagens: []
+      };
+
+      const pesoVal = parseFloat(document.getElementById('ani-peso')?.value);
+      const dtPesoVal = document.getElementById('ani-dtpeso')?.value || new Date().toISOString().slice(0, 10);
+      if (pesoVal > 0) {
+        novoAnimal.pesagens.push({
+          id: 'p-' + Date.now(),
+          data: dtPesoVal,
+          peso: pesoVal,
+          observacao: 'Pesagem inicial de entrada'
+        });
+      }
+
+      core.db.animais.push(novoAnimal);
       core.animalSelecionadoId = id;
     }
 
     core.saveDatabase('Salvou animal');
     this.fecharModal();
-    core.toast('Dados do animal salvos com sucesso!');
+    core.toast(idExistente ? 'Dados do animal atualizados com sucesso!' : 'Novo animal cadastrado no rebanho!');
     this.renderApp();
   },
 
@@ -9471,12 +9803,12 @@ const AmadeusViews = {
   // ==========================================================================
   // Utilitários de Modal
   // ==========================================================================
-  abrirModalGenerico(titulo, htmlCorpo) {
+  abrirModalGenerico(titulo, htmlCorpo, customClass = '') {
     const root = document.getElementById('modal-root');
     if (!root) return;
     root.innerHTML = `
       <div class="modal-backdrop" onclick="if(event.target===this) AmadeusViews.fecharModal()">
-        <div class="modal-card">
+        <div class="modal-card ${customClass}">
           <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:0.85rem; margin-bottom:1.15rem;">
             <div class="card-title" style="font-size:1.15rem; font-weight:800; color:var(--slate-900);">${titulo}</div>
             <button class="modal-close-btn" onclick="AmadeusViews.fecharModal()" title="Fechar janela">✕</button>
