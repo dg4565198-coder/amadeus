@@ -452,32 +452,25 @@ const AmadeusViews = {
     const core = window.AmadeusCore;
     const itens = this.getMenuModules();
     this.abrirModalGenerico(
-      '📱 Todos os Módulos do AMADEUS',
+      '📱 Módulos do AMADEUS',
       `
-        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:0.6rem; margin-bottom:1rem;">
+        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:0.65rem;">
           ${itens
             .map(
               (item) => `
             <button type="button" class="btn ${core.activeTab === item.id ? 'btn-primary' : 'btn-secondary'}"
-              style="flex-direction:column; padding:0.85rem 0.5rem; gap:0.3rem; height:auto; text-align:center;"
+              style="flex-direction:column; padding:0.95rem 0.6rem; gap:0.35rem; height:auto; text-align:center; border-radius:12px;"
               onclick="AmadeusViews.fecharModal(); AmadeusViews.navegar('${item.id}');">
-              <span style="font-size:1.45rem;">${item.icone}</span>
-              <span style="font-size:0.8rem; font-weight:700;">${item.label}</span>
-              ${item.badge !== '' ? `<span style="font-size:0.7rem; opacity:0.85;">(${item.badge})</span>` : ''}
+              <span style="font-size:1.6rem; line-height:1;">${item.icone}</span>
+              <span style="font-size:0.84rem; font-weight:700; line-height:1.2;">${item.label}</span>
+              ${item.badge !== '' ? `<span style="font-size:0.72rem; opacity:0.85;">(${item.badge})</span>` : ''}
             </button>
           `
             )
             .join('')}
         </div>
-        <div style="display:flex; justify-content:space-between; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--slate-200);">
-          <button type="button" class="btn btn-sm btn-secondary" onclick="AmadeusViews.fecharModal(); AmadeusViews.alterarModoTela('desktop')">
-            💻 Mudar p/ Notebook
-          </button>
-          <button type="button" class="btn btn-sm btn-danger" onclick="AmadeusViews.fecharModal(); AmadeusCore.logout()">
-            🚪 Sair da Conta
-          </button>
-        </div>
-      `
+      `,
+      'modal-modulos-mobile'
     );
   },
 
@@ -3647,7 +3640,7 @@ const AmadeusViews = {
                   type="text"
                   id="gmd-busca-input"
                   class="gmd-search-input"
-                  placeholder="Buscar por Brinco (ex: EXP-01) ou Nome (ex: Boreal)..."
+                  placeholder="Buscar por brinco ou nome..."
                   value="${this.buscaAnimalTermo || ''}"
                   oninput="AmadeusViews.aoDigitarBuscaAnimal(this.value)"
                   onkeydown="if(event.key==='Enter') AmadeusViews.executarBuscaAnimal()"
@@ -3658,12 +3651,14 @@ const AmadeusViews = {
                     : ''
                 }
               </div>
-              <button class="btn btn-primary" onclick="AmadeusViews.executarBuscaAnimal()" style="white-space:nowrap; padding:0.72rem 1.25rem;">
-                ⚡ Pesquisar
-              </button>
-              <button class="btn ${this.mostrarListaFiltrada ? 'btn-amber' : 'btn-secondary'}" onclick="AmadeusViews.toggleFiltrarAnimais()" style="white-space:nowrap; padding:0.72rem 1.15rem;" title="Listar animais em ordem alfabética de nome">
-                ${this.mostrarListaFiltrada ? '✕ Ocultar Filtro' : '📑 Filtrar (A-Z)'}
-              </button>
+              <div class="gmd-search-actions">
+                <button type="button" class="btn btn-primary gmd-btn-search" onclick="AmadeusViews.executarBuscaAnimal()">
+                  ⚡ Pesquisar
+                </button>
+                <button type="button" class="btn ${this.mostrarListaFiltrada ? 'btn-amber' : 'btn-secondary'} gmd-btn-filter" onclick="AmadeusViews.toggleFiltrarAnimais()" title="Listar animais em ordem alfabética de nome">
+                  ${this.mostrarListaFiltrada ? '✕ Ocultar' : '📑 Filtrar (A-Z)'}
+                </button>
+              </div>
             </div>
 
             <!-- Lista em Ordem Alfabética (Um debaixo do outro) OU Mensagem de Orientação -->
@@ -9862,8 +9857,9 @@ const AmadeusViews = {
     root.innerHTML = `
       <div class="modal-backdrop" onclick="if(event.target===this) AmadeusViews.fecharModal()">
         <div class="modal-card ${customClass}">
-          <div class="card-header" style="border-bottom:1px solid #e2e8f0; padding-bottom:0.85rem; margin-bottom:1.15rem;">
-            <div class="card-title" style="font-size:1.15rem; font-weight:800; color:var(--slate-900);">${titulo}</div>
+          <div class="modal-header-clean">
+            <div style="width:32px; height:32px;"></div>
+            <h3 class="modal-header-title">${titulo}</h3>
             <button class="modal-close-btn" onclick="AmadeusViews.fecharModal()" title="Fechar janela">✕</button>
           </div>
           <div>${htmlCorpo}</div>
