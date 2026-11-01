@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amadeus-pwa-v31';
+const CACHE_NAME = 'amadeus-pwa-v32';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS_TO_CACHE = [
   './js/views.js',
   './assets/logo-amadeus.png',
   './assets/logo-amadeus.svg',
+  './assets/amadeus-logo-banner.png',
   './data/chuvas_2025.csv',
   './data/chuvas_2026.csv'
 ];
